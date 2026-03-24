@@ -24,17 +24,18 @@ class NLLBTranslator:
             local_files_only=settings.transformers_offline,
         )
 
-    def translate(self, text: str, target_language: str) -> str:
-        """Перекладає арабський текст у вказану цільову мову NLLB.
+    def translate(self, text: str, target_language: str, source_language: str) -> str:
+        """Перекладає вхідний текст у вказану цільову мову NLLB.
 
         Args:
             text: Вхідний текст для перекладу.
             target_language: Код цільової мови NLLB (наприклад, `rus_Cyrl` або `ukr_Cyrl`).
+            source_language: Код вхідної мови NLLB (наприклад, `arb_Arab` або `pol_Latn`).
 
         Returns:
             Перекладений текст.
         """
-        self._tokenizer.src_lang = settings.src_lang
+        self._tokenizer.src_lang = source_language
         inputs = self._tokenizer(text, return_tensors="pt")
         generation_kwargs: dict[str, int] = {
             "forced_bos_token_id": self._tokenizer.convert_tokens_to_ids(target_language),

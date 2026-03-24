@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "NLLB-200 AR->(RU|UK) Service",
-    "description": "HTTP API для перекладу тексту з арабської (arb_Arab) на російську (rus_Cyrl) або українську (ukr_Cyrl) за допомогою NLLB-200.",
+    "title": "NLLB-200 Translation Service",
+    "description": "HTTP API для перекладу тексту у підтримувані цільові мови за допомогою NLLB-200. Арабська (`arb_Arab`) використовується як типовий приклад вхідного тексту.",
     "contact": {
       "name": "Speech Translate Service"
     },
@@ -40,8 +40,8 @@
         "tags": [
           "translation"
         ],
-        "summary": "Переклад з AR у RU або UK",
-        "description": "Виконує переклад одного тексту з `arb_Arab` у `rus_Cyrl` або `ukr_Cyrl`.",
+        "summary": "Переклад тексту у підтримувану мову",
+        "description": "Виконує переклад одного тексту (наприклад, арабського `arb_Arab`) у підтримувану цільову мову.",
         "operationId": "translate_translate_post",
         "requestBody": {
           "content": {
@@ -140,7 +140,7 @@
             "maxLength": 10000,
             "minLength": 1,
             "title": "Text",
-            "description": "Вхідний текст арабською мовою (arb_Arab).",
+            "description": "Вхідний текст для перекладу (наприклад, арабською `arb_Arab`).",
             "examples": [
               "مرحبا كيف حالك"
             ]
@@ -163,6 +163,33 @@
             "examples": [
               "ru",
               "uk"
+            ]
+          },
+          "source_language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ar",
+                  "pl",
+                  "sk",
+                  "hu",
+                  "ro",
+                  "md",
+                  "be",
+                  "ru"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Language",
+            "description": "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`. Якщо не передано, використовується `NLLB_SRC_LANG`.",
+            "examples": [
+              "ar",
+              "pl",
+              "ro"
             ]
           }
         },

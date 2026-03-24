@@ -1,6 +1,7 @@
-# Integration Guide (AR -> RU/UK Translation API)
+# Integration Guide (Translation API)
 
-Цей документ призначений для сторонніх сервісів, що інтегруються з API перекладу AR -> RU/UK.
+Цей документ призначений для сторонніх сервісів, що інтегруються з API перекладу у підтримувані цільові мови.
+Арабська (`arb_Arab`) використовується як приклад вхідного тексту.
 
 ## 1. Контракт API
 
@@ -46,28 +47,43 @@ Content-Type: application/json
 - Призначення: liveness перевірка сервісу
 - Успішна відповідь: `200 OK`
 
-### 4.2 Translate (AR -> RU/UK)
+### 4.2 Translate (приклад AR -> RU/UK)
 
 - Метод: `POST`
 - Шлях: `/translate`
 - `Content-Type`: `application/json`
-- Призначення: переклад одного тексту з `arb_Arab` у `rus_Cyrl` або `ukr_Cyrl`
+- Призначення: переклад одного тексту (наприклад, `arb_Arab`) у підтримувану цільову мову
 
 Request body:
 
 ```json
 {
   "text": "مرحبا كيف حالك",
+  "source_language": "ar",
   "target_language": "uk"
 }
 ```
 
 Параметри:
 
-- `text` (required): текст для перекладу, довжина `1..10000`
+- `text` (required): текст для перекладу, довжина `1..NLLB_REQUEST_TEXT_MAX_LENGTH` (дефолт: `10000`)
+- `source_language` (optional): alias вхідної мови; якщо не передано, використовується `NLLB_SRC_LANG`
 - `target_language` (optional): alias цільової мови
   - `ru` -> `rus_Cyrl`
   - `uk` -> `ukr_Cyrl`
+
+Підтримувані мови:
+
+- Вхідні (приклади):
+  - `ar` -> `arb_Arab` (арабська, приклад)
+  - `pl` -> `pol_Latn` (Польща)
+  - `sk` -> `slk_Latn` (Словаччина)
+  - `hu` -> `hun_Latn` (Угорщина)
+  - `ro` -> `ron_Latn` (Румунія)
+  - `md` -> `ron_Latn` (Молдова)
+  - `be` -> `bel_Cyrl` (Білорусь)
+  - `ru` -> `rus_Cyrl` (Росія)
+- Цільові: `ru` -> `rus_Cyrl`, `uk` -> `ukr_Cyrl`
 
 Якщо `target_language` не передано, використовується `NLLB_DEFAULT_TARGET_LANGUAGE`.
 

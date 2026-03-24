@@ -5,9 +5,12 @@ import sys
 import types
 
 import pytest
+from pydantic import ValidationError
 from pytest import MonkeyPatch
 
-from app.config import Settings
+from app.config import SUPPORTED_SOURCE_LANGUAGES, Settings, settings
+from app.main import resolve_source_language
+from app.schemas import TranslateRequest
 
 
 class DummyTokenizer:
@@ -145,7 +148,7 @@ def test_translate_does_not_pass_max_length_when_zero(monkeypatch: MonkeyPatch) 
     """Перевіряє, що при max_length=0 аргумент у generate не передається."""
     translator, model = _build_translator_with_max_length(monkeypatch=monkeypatch, max_length=0)
 
-    result = translator.translate("مرحبا", target_language="rus_Cyrl")
+    result = translator.translate("مرحبا", target_language="rus_Cyrl", source_language="arb_Arab")
 
     assert result == "translated"
     assert model.last_generate_kwargs["forced_bos_token_id"] == 777
@@ -156,7 +159,7 @@ def test_translate_passes_max_length_when_positive(monkeypatch: MonkeyPatch) -> 
     """Перевіряє, що при max_length>0 аргумент передається в generate."""
     translator, model = _build_translator_with_max_length(monkeypatch=monkeypatch, max_length=1024)
 
-    result = translator.translate("مرحبا", target_language="ukr_Cyrl")
+    result = translator.translate("مرحبا", target_language="ukr_Cyrl", source_language="arb_Arab")
 
     assert result == "translated"
     assert model.last_generate_kwargs["forced_bos_token_id"] == 777
@@ -173,3 +176,30 @@ def test_settings_reject_negative_max_length() -> None:
     """Перевіряє, що від'ємне `NLLB_MAX_LENGTH` відхиляється валідацією."""
     with pytest.raises(ValueError, match="NLLB_MAX_LENGTH must be greater than or equal to 0."):
         Settings(max_length=-1)
+
+
+def test_settings_reject_invalid_request_text_max_length() -> None:
+    """Перевіряє, що `NLLB_REQUEST_TEXT_MAX_LENGTH < 1` відхиляється."""
+    with pytest.raises(ValueError, match="NLLB_REQUEST_TEXT_MAX_LENGTH must be greater than or equal to 1."):
+        Settings(request_text_max_length=0)
+
+
+def test_translate_request_enforces_text_length_limit() -> None:
+    """Перевіряє, що схема застосовує ліміт `NLLB_REQUEST_TEXT_MAX_LENGTH`."""
+    valid_text = "a" * settings.request_text_max_length
+    payload = TranslateRequest(text=valid_text)
+    assert payload.text == valid_text
+
+    with pytest.raises(ValidationError):
+        TranslateRequest(text="a" * (settings.request_text_max_length + 1))
+
+
+def test_supported_source_languages_include_ukraine_neighboring_countries() -> None:
+    """Перевіряє, що source-мови містять alias для країн-сусідів України."""
+    expected_aliases = {"pl", "sk", "hu", "ro", "md", "be", "ru"}
+    assert expected_aliases.issubset(SUPPORTED_SOURCE_LANGUAGES.keys())
+
+
+def test_resolve_source_language_alias() -> None:
+    """Перевіряє перетворення source alias у NLLB-код."""
+    assert resolve_source_language("pl") == "pol_Latn"

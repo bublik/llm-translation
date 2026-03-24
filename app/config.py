@@ -1,9 +1,50 @@
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+API_TITLE = "NLLB-200 Translation Service"
+API_VERSION = "0.3.0"
+API_DESCRIPTION = (
+    "HTTP API для перекладу тексту у підтримувані цільові мови за допомогою NLLB-200. "
+    "Арабська (`arb_Arab`) використовується як типовий приклад вхідного тексту."
+)
+API_CONTACT_NAME = "Speech Translate Service"
+API_TAGS = (
+    {"name": "system", "description": "Службові ендпоінти сервісу."},
+    {"name": "translation", "description": "Ендпоінти перекладу тексту."},
+)
+API_KEY_HEADER_NAME = "X-API-Key"
+HEALTH_ENDPOINT_PATH = "/health"
+TRANSLATE_ENDPOINT_PATH = "/translate"
+HEALTH_OK_STATUS = "ok"
+INVALID_OR_MISSING_API_KEY_DETAIL = "Invalid or missing API key."
+MODEL_UNAVAILABLE_DETAIL_PREFIX = "Model is unavailable"
+UNSUPPORTED_TARGET_LANGUAGE_DETAIL_TEMPLATE = "Unsupported target_language '{alias}'. Supported: {supported}"
+UNSUPPORTED_SOURCE_LANGUAGE_DETAIL_TEMPLATE = "Unsupported source_language '{alias}'. Supported: {supported}"
+HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE = 422
+HTTP_STATUS_UNAUTHORIZED = 401
+HTTP_STATUS_MODEL_UNAVAILABLE = 503
+UNAUTHORIZED_RESPONSE_DESCRIPTION = "Невалідний або відсутній API ключ."
+MODEL_UNAVAILABLE_RESPONSE_DESCRIPTION = "Модель недоступна або не ініціалізувалась."
+TRANSLATE_SUMMARY = "Переклад тексту у підтримувану мову"
+TRANSLATE_DESCRIPTION = (
+    "Виконує переклад одного тексту (наприклад, арабського `arb_Arab`) "
+    "у підтримувану цільову мову."
+)
+TEXT_MIN_LENGTH = 1
+
 SUPPORTED_TARGET_LANGUAGES = {
     "ru": "rus_Cyrl",
     "uk": "ukr_Cyrl",
+}
+SUPPORTED_SOURCE_LANGUAGES = {
+    "ar": "arb_Arab",
+    "pl": "pol_Latn",  # Poland
+    "sk": "slk_Latn",  # Slovakia
+    "hu": "hun_Latn",  # Hungary
+    "ro": "ron_Latn",  # Romania
+    "md": "ron_Latn",  # Moldova (Romanian)
+    "be": "bel_Cyrl",  # Belarus
+    "ru": "rus_Cyrl",  # Russia
 }
 
 
@@ -21,6 +62,7 @@ class Settings(BaseSettings):
     model_cache_dir: str = "/app/storage/huggingface"
     transformers_offline: bool = False
     max_length: int = 1024
+    request_text_max_length: int = 10_000
 
     @field_validator("default_target_language")
     @classmethod
@@ -103,6 +145,24 @@ class Settings(BaseSettings):
         if not normalized_value:
             raise ValueError("NLLB_MODEL_CACHE_DIR must not be empty.")
         return normalized_value
+
+    @field_validator("request_text_max_length")
+    @classmethod
+    def validate_request_text_max_length(cls, value: int) -> int:
+        """Перевіряє ліміт довжини вхідного тексту для API.
+
+        Args:
+            value: Значення `NLLB_REQUEST_TEXT_MAX_LENGTH` з env.
+
+        Returns:
+            Додатне ціле значення.
+
+        Raises:
+            ValueError: Якщо значення менше 1.
+        """
+        if value < TEXT_MIN_LENGTH:
+            raise ValueError("NLLB_REQUEST_TEXT_MAX_LENGTH must be greater than or equal to 1.")
+        return value
 
 
 settings = Settings()

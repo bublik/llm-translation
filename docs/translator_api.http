@@ -6,17 +6,18 @@
 GET {{baseUrl}}/health
 Accept: application/json
 
-### Translate AR -> RU (default via NLLB_DEFAULT_TARGET_LANGUAGE)
+### Translate (example AR -> RU, default via NLLB_DEFAULT_TARGET_LANGUAGE)
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: {{apiKey}}
 
 {
-  "text": "مرحبا كيف حالك"
+  "text": "مرحبا كيف حالك",
+  "source_language": "ar"
 }
 
-### Translate AR -> RU (explicit)
+### Translate (example AR -> RU, explicit)
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
@@ -27,7 +28,7 @@ X-API-Key: {{apiKey}}
   "target_language": "ru"
 }
 
-### Translate AR -> UK
+### Translate (example AR -> UK)
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
@@ -35,6 +36,19 @@ X-API-Key: {{apiKey}}
 
 {
   "text": "مرحبا كيف حالك",
+  "source_language": "ar",
+  "target_language": "uk"
+}
+
+### Translate (example PL -> UK)
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "text": "Cześć, jak się masz?",
+  "source_language": "pl",
   "target_language": "uk"
 }
 

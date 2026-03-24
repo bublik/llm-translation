@@ -1,28 +1,46 @@
 from typing import TYPE_CHECKING, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Security, status
+from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import APIKeyHeader
 
-from app.config import SUPPORTED_TARGET_LANGUAGES, settings
+from app.config import (
+    API_CONTACT_NAME,
+    API_DESCRIPTION,
+    API_KEY_HEADER_NAME,
+    API_TAGS,
+    API_TITLE,
+    API_VERSION,
+    HEALTH_ENDPOINT_PATH,
+    HEALTH_OK_STATUS,
+    HTTP_STATUS_MODEL_UNAVAILABLE,
+    HTTP_STATUS_UNAUTHORIZED,
+    HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE,
+    INVALID_OR_MISSING_API_KEY_DETAIL,
+    MODEL_UNAVAILABLE_DETAIL_PREFIX,
+    MODEL_UNAVAILABLE_RESPONSE_DESCRIPTION,
+    SUPPORTED_SOURCE_LANGUAGES,
+    SUPPORTED_TARGET_LANGUAGES,
+    TRANSLATE_DESCRIPTION,
+    TRANSLATE_ENDPOINT_PATH,
+    TRANSLATE_SUMMARY,
+    UNAUTHORIZED_RESPONSE_DESCRIPTION,
+    UNSUPPORTED_SOURCE_LANGUAGE_DETAIL_TEMPLATE,
+    UNSUPPORTED_TARGET_LANGUAGE_DETAIL_TEMPLATE,
+    settings,
+)
 from app.schemas import ErrorResponse, TranslateRequest, TranslateResponse
 
 if TYPE_CHECKING:
     from app.translator import NLLBTranslator
 
 app = FastAPI(
-    title="NLLB-200 AR->(RU|UK) Service",
-    version="0.3.0",
-    description=(
-        "HTTP API для перекладу тексту з арабської (arb_Arab) "
-        "на російську (rus_Cyrl) або українську (ukr_Cyrl) за допомогою NLLB-200."
-    ),
-    contact={"name": "Speech Translate Service"},
-    openapi_tags=[
-        {"name": "system", "description": "Службові ендпоінти сервісу."},
-        {"name": "translation", "description": "Ендпоінти перекладу тексту."},
-    ],
+    title=API_TITLE,
+    version=API_VERSION,
+    description=API_DESCRIPTION,
+    contact={"name": API_CONTACT_NAME},
+    openapi_tags=list(API_TAGS),
 )
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
 
 
 def get_translator() -> Any:
@@ -35,8 +53,8 @@ def get_translator() -> Any:
             translator = NLLBTranslator()
         except Exception as exc:  # pragma: no cover
             raise HTTPException(
-                status_code=503,
-                detail=f"Model is unavailable: {exc}",
+                status_code=HTTP_STATUS_MODEL_UNAVAILABLE,
+                detail=f"{MODEL_UNAVAILABLE_DETAIL_PREFIX}: {exc}",
             ) from exc
         app.state.translator = translator
     return translator
@@ -58,7 +76,36 @@ def resolve_target_language(target_language: str | None) -> str:
     resolved_language = SUPPORTED_TARGET_LANGUAGES.get(alias)
     if resolved_language is None:
         supported = ", ".join(sorted(SUPPORTED_TARGET_LANGUAGES.keys()))
-        raise HTTPException(status_code=422, detail=f"Unsupported target_language '{alias}'. Supported: {supported}")
+        raise HTTPException(
+            status_code=HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE,
+            detail=UNSUPPORTED_TARGET_LANGUAGE_DETAIL_TEMPLATE.format(alias=alias, supported=supported),
+        )
+    return resolved_language
+
+
+def resolve_source_language(source_language: str | None) -> str:
+    """Визначає NLLB-код вхідної мови для поточного запиту.
+
+    Args:
+        source_language: Alias вхідної мови з запиту.
+
+    Returns:
+        Код вхідної мови NLLB.
+
+    Raises:
+        HTTPException: Якщо alias не підтримується.
+    """
+    if source_language is None:
+        return settings.src_lang
+
+    alias = source_language.strip().lower()
+    resolved_language = SUPPORTED_SOURCE_LANGUAGES.get(alias)
+    if resolved_language is None:
+        supported = ", ".join(sorted(SUPPORTED_SOURCE_LANGUAGES.keys()))
+        raise HTTPException(
+            status_code=HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE,
+            detail=UNSUPPORTED_SOURCE_LANGUAGE_DETAIL_TEMPLATE.format(alias=alias, supported=supported),
+        )
     return resolved_language
 
 
@@ -75,36 +122,36 @@ def require_api_key(api_key: str | None = Security(api_key_header)) -> None:
         return
     if not api_key or api_key != settings.api_key:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing API key.",
+            status_code=HTTP_STATUS_UNAUTHORIZED,
+            detail=INVALID_OR_MISSING_API_KEY_DETAIL,
         )
 
 
 @app.get(
-    "/health",
+    HEALTH_ENDPOINT_PATH,
     tags=["system"],
     summary="Перевірка доступності сервісу",
     description="Повертає базовий статус живості застосунку.",
 )
 def health() -> dict[str, str]:
     """Ендпоінт liveness-перевірки."""
-    return {"status": "ok"}
+    return {"status": HEALTH_OK_STATUS}
 
 
 @app.post(
-    "/translate",
+    TRANSLATE_ENDPOINT_PATH,
     tags=["translation"],
-    summary="Переклад з AR у RU або UK",
-    description="Виконує переклад одного тексту з `arb_Arab` у `rus_Cyrl` або `ukr_Cyrl`.",
+    summary=TRANSLATE_SUMMARY,
+    description=TRANSLATE_DESCRIPTION,
     response_model=TranslateResponse,
     responses={
-        401: {
+        HTTP_STATUS_UNAUTHORIZED: {
             "model": ErrorResponse,
-            "description": "Невалідний або відсутній API ключ.",
+            "description": UNAUTHORIZED_RESPONSE_DESCRIPTION,
         },
-        503: {
+        HTTP_STATUS_MODEL_UNAVAILABLE: {
             "model": ErrorResponse,
-            "description": "Модель недоступна або не ініціалізувалась.",
+            "description": MODEL_UNAVAILABLE_RESPONSE_DESCRIPTION,
         }
     },
 )
@@ -122,11 +169,16 @@ def translate(
     Returns:
         Об'єкт із перекладом і метаданими застосованої конфігурації.
     """
+    resolved_source_language = resolve_source_language(payload.source_language)
     resolved_target_language = resolve_target_language(payload.target_language)
-    translated = translator.translate(payload.text, target_language=resolved_target_language)
+    translated = translator.translate(
+        payload.text,
+        target_language=resolved_target_language,
+        source_language=resolved_source_language,
+    )
     return TranslateResponse(
         translation=translated,
-        source_language=settings.src_lang,
+        source_language=resolved_source_language,
         target_language=resolved_target_language,
         model_name=settings.model_name,
     )

@@ -2,20 +2,32 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.config import TEXT_MIN_LENGTH, settings
+
+SourceLanguageAlias = Literal["ar", "pl", "sk", "hu", "ro", "md", "be", "ru"]
+
 
 class TranslateRequest(BaseModel):
     """Запит на переклад одного текстового фрагмента."""
 
     text: str = Field(
-        min_length=1,
-        max_length=10_000,
-        description="Вхідний текст арабською мовою (arb_Arab).",
+        min_length=TEXT_MIN_LENGTH,
+        max_length=settings.request_text_max_length,
+        description="Вхідний текст для перекладу (наприклад, арабською `arb_Arab`).",
         examples=["مرحبا كيف حالك"],
     )
     target_language: Literal["ru", "uk"] | None = Field(
         default=None,
         description="Цільова мова перекладу: `ru` (російська) або `uk` (українська). Якщо не передано, використовується NLLB_DEFAULT_TARGET_LANGUAGE.",
         examples=["ru", "uk"],
+    )
+    source_language: SourceLanguageAlias | None = Field(
+        default=None,
+        description=(
+            "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`. "
+            "Якщо не передано, використовується `NLLB_SRC_LANG`."
+        ),
+        examples=["ar", "pl", "ro"],
     )
 
 

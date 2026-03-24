@@ -1,6 +1,7 @@
-# NLLB-200 AR->(RU|UK) service
+# NLLB-200 Translation service
 
-Стартовий каркас API-сервісу перекладу з арабської на російську або українську на базі `facebook/nllb-200-distilled-600M`.
+Стартовий каркас API-сервісу перекладу у підтримувані цільові мови на базі `facebook/nllb-200-distilled-600M`.
+Арабська (`arb_Arab`) використовується в документації як приклад вхідної мови.
 
 ## Локальний запуск (venv)
 
@@ -43,7 +44,7 @@ docker compose up --build
 curl http://localhost:8000/health
 ```
 
-### Translate AR -> RU (default)
+### Translate (приклад AR -> RU, default)
 
 ```bash
 curl -X POST http://localhost:8000/translate \
@@ -52,7 +53,7 @@ curl -X POST http://localhost:8000/translate \
   -d '{"text":"مرحبا كيف حالك"}'
 ```
 
-### Translate AR -> UK
+### Translate (приклад AR -> UK)
 
 ```bash
 curl -X POST http://localhost:8000/translate \
@@ -61,18 +62,42 @@ curl -X POST http://localhost:8000/translate \
   -d '{"text":"مرحبا كيف حالك", "target_language":"uk"}'
 ```
 
+### Translate (приклад PL -> UK)
+
+```bash
+curl -X POST http://localhost:8000/translate \
+  -H 'Content-Type: application/json' \
+  -H 'X-API-Key: change-me' \
+  -d '{"text":"Cześć, jak się masz?", "source_language":"pl", "target_language":"uk"}'
+```
+
 ## Контроль доступу (API key)
 
 - Auth для `POST /translate` керується env-параметром `NLLB_API_KEY_ENABLED`.
 - Якщо `NLLB_API_KEY_ENABLED=true`, клієнт має передавати `X-API-Key`.
 - Якщо `NLLB_API_KEY_ENABLED=false`, `X-API-Key` не обов'язковий.
 
-## Підтримувані варіанти цільової мови
+## Підтримувані мови
 
+Вхідні мови (приклади для payload):
+- `ar` -> `arb_Arab` (арабська, приклад у документації)
+- `pl` -> `pol_Latn` (Польща)
+- `sk` -> `slk_Latn` (Словаччина)
+- `hu` -> `hun_Latn` (Угорщина)
+- `ro` -> `ron_Latn` (Румунія)
+- `md` -> `ron_Latn` (Молдова)
+- `be` -> `bel_Cyrl` (Білорусь)
+- `ru` -> `rus_Cyrl` (Росія)
+
+Цільові мови:
 - `ru` -> `rus_Cyrl`
 - `uk` -> `ukr_Cyrl`
 
 Параметр `target_language` у запиті опційний. Якщо не переданий, сервіс використовує дефолт із `NLLB_DEFAULT_TARGET_LANGUAGE`.
+Параметр `source_language` у запиті опційний. Якщо не переданий, сервіс використовує `NLLB_SRC_LANG`.
+
+Повний список мов які можна підключити
+https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/README.md
 
 ## Налаштування
 
@@ -85,6 +110,7 @@ curl -X POST http://localhost:8000/translate \
 - `NLLB_MODEL_CACHE_DIR` (default: `/app/storage/huggingface`, локальний кеш model/tokenizer)
 - `NLLB_TRANSFORMERS_OFFLINE` (default: `0`, `1` вмикає офлайн-режим HuggingFace)
 - `NLLB_MAX_LENGTH` (default: `1024`; `0` = без обмеження довжини генерації; `1024` ~= до однієї сторінки друкованого тексту)
+- `NLLB_REQUEST_TEXT_MAX_LENGTH` (default: `10000`, верхня межа довжини поля `text` у запиті `/translate`)
 - `STORAGE_PATH` (default: `./storage`, хостова директорія для кешу моделі/даних сервісу)
 
 Backward compatibility:

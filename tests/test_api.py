@@ -6,16 +6,24 @@ from app.main import app
 class DummyTranslator:
     """Тестовий перекладач, що повертає маркер цільової мови."""
 
-    def translate(self, text: str, target_language: str) -> str:
+    def __init__(self) -> None:
+        """Ініціалізує слоти для останніх параметрів перекладу."""
+        self.last_source_language: str | None = None
+        self.last_target_language: str | None = None
+
+    def translate(self, text: str, target_language: str, source_language: str) -> str:
         """Емулює переклад для інтеграційних API-тестів.
 
         Args:
             text: Вхідний текст.
             target_language: Цільова NLLB-мова.
+            source_language: Вхідна NLLB-мова.
 
         Returns:
             Текст із префіксом цільової мови.
         """
+        self.last_source_language = source_language
+        self.last_target_language = target_language
         return f"{target_language}:{text}"
 
 
@@ -79,3 +87,18 @@ def test_translate_rejects_unsupported_target_language() -> None:
 
     assert response.status_code == 422
     assert payload["detail"][0]["loc"] == ["body", "target_language"]
+
+
+def test_translate_resolves_source_language_alias() -> None:
+    """Перевіряє резолв source_language alias у NLLB-код."""
+    translator = DummyTranslator()
+    app.state.translator = translator
+    client = TestClient(app)
+
+    response = client.post("/translate", json={"text": "Cześć", "source_language": "pl", "target_language": "uk"})
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["source_language"] == "pol_Latn"
+    assert payload["target_language"] == "ukr_Cyrl"
+    assert translator.last_source_language == "pol_Latn"
