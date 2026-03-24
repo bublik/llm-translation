@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     default_target_language: str = "ru"
     api_key_enabled: bool = False
     api_key: str | None = None
-    max_length: int = 256
+    model_cache_dir: str = "/app/storage/huggingface"
+    transformers_offline: bool = False
+    max_length: int = 1024
 
     @field_validator("default_target_language")
     @classmethod
@@ -64,6 +66,43 @@ class Settings(BaseSettings):
         if self.api_key_enabled and not self.api_key:
             raise ValueError("NLLB_API_KEY must be set when NLLB_API_KEY_ENABLED=true.")
         return self
+
+    @field_validator("max_length")
+    @classmethod
+    def validate_max_length(cls, value: int) -> int:
+        """Перевіряє обмеження довжини генерації перекладу.
+
+        Args:
+            value: Значення `NLLB_MAX_LENGTH` з env.
+
+        Returns:
+            Ціле невід'ємне значення довжини.
+
+        Raises:
+            ValueError: Якщо значення від'ємне.
+        """
+        if value < 0:
+            raise ValueError("NLLB_MAX_LENGTH must be greater than or equal to 0.")
+        return value
+
+    @field_validator("model_cache_dir")
+    @classmethod
+    def validate_model_cache_dir(cls, value: str) -> str:
+        """Перевіряє директорію локального кешу моделі.
+
+        Args:
+            value: Шлях до директорії кешу з env.
+
+        Returns:
+            Нормалізований непорожній шлях.
+
+        Raises:
+            ValueError: Якщо шлях порожній.
+        """
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("NLLB_MODEL_CACHE_DIR must not be empty.")
+        return normalized_value
 
 
 settings = Settings()

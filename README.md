@@ -23,6 +23,7 @@ docker compose up --build
 
 Щоб модель не завантажувалась з інтернету після кожного рестарту:
 - використовуйте постійний `STORAGE_PATH` (bind mount в `/app/storage`);
+- модель у коді завжди завантажується з `cache_dir=NLLB_MODEL_CACHE_DIR` (дефолт: `/app/storage/huggingface`);
 - перший запуск зробіть з `NLLB_TRANSFORMERS_OFFLINE=0` для кешування моделі;
 - після прогріву можна поставити `NLLB_TRANSFORMERS_OFFLINE=1` для офлайн-режиму.
 
@@ -81,6 +82,7 @@ curl -X POST http://localhost:8000/translate \
 - `NLLB_DEFAULT_TARGET_LANGUAGE` (default: `ru`, підтримувані: `ru`, `uk`)
 - `NLLB_API_KEY_ENABLED` (default: `false`, допустимі: `true|false`)
 - `NLLB_API_KEY` (default: `change-me`, обов'язковий якщо `NLLB_API_KEY_ENABLED=true`)
+- `NLLB_MODEL_CACHE_DIR` (default: `/app/storage/huggingface`, локальний кеш model/tokenizer)
 - `NLLB_TRANSFORMERS_OFFLINE` (default: `0`, `1` вмикає офлайн-режим HuggingFace)
 - `NLLB_MAX_LENGTH` (default: `1024`; `0` = без обмеження довжини генерації; `1024` ~= до однієї сторінки друкованого тексту)
 - `STORAGE_PATH` (default: `./storage`, хостова директорія для кешу моделі/даних сервісу)
