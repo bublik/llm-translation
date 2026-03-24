@@ -42,3 +42,11 @@ class ErrorResponse(BaseModel):
     """Стандартна помилка API."""
 
     detail: str = Field(description="Опис причини помилки.")
+
+
+class LanguagesResponse(BaseModel):
+    """Список підтримуваних source/target мов сервісу."""
+
+    source_languages: dict[str, str] = Field(description="Мапа alias -> NLLB код для вхідних мов.")
+    target_languages: dict[str, str] = Field(description="Мапа alias -> NLLB код для цільових мов.")
+    default_target_language: str = Field(description="Alias цільової мови за замовчуванням.")

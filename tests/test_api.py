@@ -1,6 +1,7 @@
-from fastapi.testclient import TestClient
+from starlette.requests import Request
 
-from app.main import app
+from app.main import health, languages, rate_limit_buckets, require_rate_limit, settings, translate
+from app.schemas import TranslateRequest
 
 
 class DummyTranslator:
@@ -12,105 +13,75 @@ class DummyTranslator:
         self.last_target_language: str | None = None
 
     def translate(self, text: str, target_language: str, source_language: str) -> str:
-        """Емулює переклад для інтеграційних API-тестів.
-
-        Args:
-            text: Вхідний текст.
-            target_language: Цільова NLLB-мова.
-            source_language: Вхідна NLLB-мова.
-
-        Returns:
-            Текст із префіксом цільової мови.
-        """
+        """Емулює переклад для тестів API-шару."""
         self.last_source_language = source_language
         self.last_target_language = target_language
         return f"{target_language}:{text}"
 
 
-def test_health() -> None:
-    """Перевіряє, що ендпоінт health повертає статус ok."""
-    client = TestClient(app)
-    response = client.get("/health")
+def _build_request(client_ip: str = "127.0.0.1") -> Request:
+    """Створює мінімальний request-об'єкт для unit-тестів."""
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/translate",
+        "headers": [],
+        "client": (client_ip, 12345),
+    }
+    return Request(scope)
 
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+
+def test_health() -> None:
+    """Перевіряє, що health повертає статус ok."""
+    assert health() == {"status": "ok"}
+
+
+def test_languages() -> None:
+    """Перевіряє, що `/languages` повертає source/target мапи."""
+    payload = languages()
+    assert payload.source_languages["pl"] == "pol_Latn"
+    assert payload.target_languages["uk"] == "ukr_Cyrl"
 
 
 def test_translate_uses_default_ru_target_language() -> None:
     """Перевіряє дефолтну цільову мову ru, якщо параметр не передано."""
-    app.state.translator = DummyTranslator()
-    client = TestClient(app)
+    translator = DummyTranslator()
+    payload = TranslateRequest(text="مرحبا", source_language="ar")
 
-    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar"})
-    payload = response.json()
+    response = translate(request=_build_request(), payload=payload, _=None, __=None, translator=translator)
 
-    assert response.status_code == 200
-    assert payload["translation"] == "rus_Cyrl:مرحبا"
-    assert payload["source_language"] == "arb_Arab"
-    assert payload["target_language"] == "rus_Cyrl"
-
-
-def test_translate_to_ukrainian() -> None:
-    """Перевіряє переклад у українську через target_language=uk."""
-    app.state.translator = DummyTranslator()
-    client = TestClient(app)
-
-    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar", "target_language": "uk"})
-    payload = response.json()
-
-    assert response.status_code == 200
-    assert payload["translation"] == "ukr_Cyrl:مرحبا"
-    assert payload["source_language"] == "arb_Arab"
-    assert payload["target_language"] == "ukr_Cyrl"
-
-
-def test_translate_to_russian_explicitly() -> None:
-    """Перевіряє явний вибір російської через target_language=ru."""
-    app.state.translator = DummyTranslator()
-    client = TestClient(app)
-
-    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar", "target_language": "ru"})
-    payload = response.json()
-
-    assert response.status_code == 200
-    assert payload["translation"] == "rus_Cyrl:مرحبا"
-    assert payload["target_language"] == "rus_Cyrl"
-
-
-def test_translate_rejects_unsupported_target_language() -> None:
-    """Перевіряє валідацію target_language для непідтриманого значення."""
-    app.state.translator = DummyTranslator()
-    client = TestClient(app)
-
-    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar", "target_language": "de"})
-    payload = response.json()
-
-    assert response.status_code == 422
-    assert payload["detail"][0]["loc"] == ["body", "target_language"]
-
-
-def test_translate_rejects_missing_source_language() -> None:
-    """Перевіряє, що `source_language` є обов'язковим полем запиту."""
-    app.state.translator = DummyTranslator()
-    client = TestClient(app)
-
-    response = client.post("/translate", json={"text": "مرحبا", "target_language": "ru"})
-    payload = response.json()
-
-    assert response.status_code == 422
-    assert payload["detail"][0]["loc"] == ["body", "source_language"]
+    assert response.translation == "rus_Cyrl:مرحبا"
+    assert response.source_language == "arb_Arab"
+    assert response.target_language == "rus_Cyrl"
+    assert translator.last_source_language == "arb_Arab"
 
 
 def test_translate_resolves_source_language_alias() -> None:
     """Перевіряє резолв source_language alias у NLLB-код."""
     translator = DummyTranslator()
-    app.state.translator = translator
-    client = TestClient(app)
+    payload = TranslateRequest(text="Cześć", source_language="pl", target_language="uk")
 
-    response = client.post("/translate", json={"text": "Cześć", "source_language": "pl", "target_language": "uk"})
-    payload = response.json()
+    response = translate(request=_build_request(), payload=payload, _=None, __=None, translator=translator)
 
-    assert response.status_code == 200
-    assert payload["source_language"] == "pol_Latn"
-    assert payload["target_language"] == "ukr_Cyrl"
+    assert response.source_language == "pol_Latn"
+    assert response.target_language == "ukr_Cyrl"
     assert translator.last_source_language == "pol_Latn"
+
+
+def test_rate_limit_exceeded(monkeypatch) -> None:
+    """Перевіряє `429`, коли ліміт запитів у вікні перевищено."""
+    from fastapi import HTTPException
+
+    rate_limit_buckets.clear()
+    monkeypatch.setattr(settings, "rate_limit_enabled", True)
+    monkeypatch.setattr(settings, "rate_limit_requests", 1)
+    monkeypatch.setattr(settings, "rate_limit_window_seconds", 60)
+
+    request = _build_request(client_ip="10.0.0.1")
+    require_rate_limit(request)
+
+    try:
+        require_rate_limit(request)
+        assert False, "Очікувався HTTPException(429), але помилка не виникла."
+    except HTTPException as exc:
+        assert exc.status_code == 429

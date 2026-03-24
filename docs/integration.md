@@ -23,6 +23,7 @@
 Підтримуються заголовки `X-API-Key` і `Authorization: Bearer ...` для захищених ендпоінтів.
 
 - Health-check (`GET /health`) працює без ключа.
+- Languages (`GET /languages`) працює без ключа.
 - Translate (`POST /translate`) перевіряє ключ, якщо `NLLB_API_KEY_ENABLED=true`.
 
 Налаштування на сервері:
@@ -31,6 +32,9 @@
 - `NLLB_API_KEY=<секрет>`
 - `NLLB_BEARER_TOKEN_ENABLED=true|false`
 - `NLLB_BEARER_TOKEN=<секрет>`
+- `NLLB_RATE_LIMIT_ENABLED=true|false`
+- `NLLB_RATE_LIMIT_REQUESTS=<ціле>`
+- `NLLB_RATE_LIMIT_WINDOW_SECONDS=<ціле>`
 
 Приклад:
 
@@ -100,6 +104,13 @@ Response `200`:
 }
 ```
 
+### 4.3 Languages
+
+- Метод: `GET`
+- Шлях: `/languages`
+- Призначення: повертає доступні alias-и вхідних/цільових мов
+- Успішна відповідь: `200 OK`
+
 ## 5. Помилки і обробка
 
 ### 5.1 `401 Unauthorized`
@@ -116,6 +127,10 @@ Response `200`:
 ### 5.3 `503 Service Unavailable`
 
 Причина: модель перекладу недоступна/не ініціалізувалась.
+
+### 5.4 `429 Too Many Requests`
+
+Причина: перевищено ліміт запитів (`NLLB_RATE_LIMIT_*`) для `POST /translate`.
 
 ## 6. Retry policy (рекомендовано для інтегратора)
 
@@ -137,7 +152,8 @@ Response `200`:
 1. Налаштувати base URL для середовища.
 2. Налаштувати `X-API-Key` або `Authorization: Bearer ...` на стороні клієнта (якщо auth увімкнено).
 3. Реалізувати health-check (`GET /health`).
-4. Реалізувати виклик `POST /translate` з `target_language=ru|uk`.
-5. Додати обробку `401`, `422`, `503`.
-6. Увімкнути timeout/retry політику.
-7. Перевірити інтеграцію прикладами з `docs/translator_api.http`.
+4. Реалізувати отримання списку мов через `GET /languages`.
+5. Реалізувати виклик `POST /translate` з `source_language` і `target_language=ru|uk`.
+6. Додати обробку `401`, `422`, `429`, `503`.
+7. Увімкнути timeout/retry політику.
+8. Перевірити інтеграцію прикладами з `docs/translator_api.http`.

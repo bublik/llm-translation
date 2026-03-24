@@ -44,13 +44,19 @@ docker compose up --build
 curl http://localhost:8000/health
 ```
 
+### Languages (public)
+
+```bash
+curl http://localhost:8000/languages
+```
+
 ### Translate (приклад AR -> RU, default)
 
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer change-me-token' \
-  -d '{"text":"مرحبا كيف حالك"}'
+  -d '{"text":"مرحبا كيف حالك", "source_language":"ar"}'
 ```
 
 ### Translate (приклад AR -> UK)
@@ -59,7 +65,7 @@ curl -X POST http://localhost:8000/translate \
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer change-me-token' \
-  -d '{"text":"مرحبا كيف حالك", "target_language":"uk"}'
+  -d '{"text":"مرحبا كيف حالك", "source_language":"ar", "target_language":"uk"}'
 ```
 
 ### Translate (приклад PL -> UK)
@@ -110,11 +116,31 @@ https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/README.md
 - `NLLB_API_KEY` (default: `change-me`, обов'язковий якщо `NLLB_API_KEY_ENABLED=true`)
 - `NLLB_BEARER_TOKEN_ENABLED` (default: `false`, допустимі: `true|false`)
 - `NLLB_BEARER_TOKEN` (default: `change-me-token`, обов'язковий якщо `NLLB_BEARER_TOKEN_ENABLED=true`)
+- `NLLB_RATE_LIMIT_ENABLED` (default: `false`, вмикає rate limit для `/translate`)
+- `NLLB_RATE_LIMIT_REQUESTS` (default: `60`, кількість запитів у вікні)
+- `NLLB_RATE_LIMIT_WINDOW_SECONDS` (default: `60`, розмір вікна rate limit у секундах)
 - `NLLB_MODEL_CACHE_DIR` (default: `/app/storage/huggingface`, локальний кеш model/tokenizer)
 - `NLLB_TRANSFORMERS_OFFLINE` (default: `0`, `1` вмикає офлайн-режим HuggingFace)
 - `NLLB_MAX_LENGTH` (default: `1024`; `0` = без обмеження довжини генерації; `1024` ~= до однієї сторінки друкованого тексту)
 - `NLLB_REQUEST_TEXT_MAX_LENGTH` (default: `10000`, верхня межа довжини поля `text` у запиті `/translate`)
 - `STORAGE_PATH` (default: `./storage`, хостова директорія для кешу моделі/даних сервісу)
+
+## Релізний Чекліст
+
+1. Оновити `.env` для auth/rate limit і перевірити, що секрети не потрапляють у git.
+2. Запустити `pytest` для `tests/test_translator.py` і `tests/test_auth.py`.
+3. Перегенерувати `docs/openapi.json` з поточного коду.
+4. Підняти сервіс і перевірити `GET /health`, `GET /languages`, `POST /translate`.
+5. Перевірити `401` (без токена/ключа), `422` (невалідний payload), `429` (якщо rate limit увімкнено).
+
+## Rollback План
+
+1. Відкотити деплой на попередній образ/коміт.
+2. Вимкнути нові фічі через env:
+   - `NLLB_BEARER_TOKEN_ENABLED=false`
+   - `NLLB_RATE_LIMIT_ENABLED=false`
+3. Перезапустити сервіс і перевірити `GET /health`.
+4. Повторити smoke-тести (`/languages`, `/translate`) на відновленій версії.
 
 Backward compatibility:
 - Старі клієнти, що не передають `target_language`, продовжать працювати без змін.

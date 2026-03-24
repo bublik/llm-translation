@@ -7,6 +7,10 @@
 GET {{baseUrl}}/health
 Accept: application/json
 
+### Languages (public)
+GET {{baseUrl}}/languages
+Accept: application/json
+
 ### Translate (example AR -> RU, default via NLLB_DEFAULT_TARGET_LANGUAGE)
 POST {{baseUrl}}/translate
 Content-Type: application/json

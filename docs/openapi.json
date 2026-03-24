@@ -35,6 +35,28 @@
         }
       }
     },
+    "/languages": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Підтримувані мови",
+        "description": "Повертає підтримувані alias-и і відповідні NLLB-коди.",
+        "operationId": "languages_languages_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LanguagesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/translate": {
       "post": {
         "tags": [
@@ -66,6 +88,16 @@
           },
           "401": {
             "description": "Невалідні або відсутні облікові дані авторизації.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Перевищено ліміт запитів.",
             "content": {
               "application/json": {
                 "schema": {
@@ -135,6 +167,39 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "LanguagesResponse": {
+        "properties": {
+          "source_languages": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Source Languages",
+            "description": "Мапа alias -> NLLB код для вхідних мов."
+          },
+          "target_languages": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Target Languages",
+            "description": "Мапа alias -> NLLB код для цільових мов."
+          },
+          "default_target_language": {
+            "type": "string",
+            "title": "Default Target Language",
+            "description": "Alias цільової мови за замовчуванням."
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_languages",
+          "target_languages",
+          "default_target_language"
+        ],
+        "title": "LanguagesResponse",
+        "description": "Список підтримуваних source/target мов сервісу."
       },
       "TranslateRequest": {
         "properties": {

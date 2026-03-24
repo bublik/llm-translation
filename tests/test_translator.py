@@ -196,6 +196,18 @@ def test_settings_accept_bearer_token_when_enabled() -> None:
     assert cfg.bearer_token == "token-123"
 
 
+def test_settings_reject_invalid_rate_limit_requests() -> None:
+    """Перевіряє, що `NLLB_RATE_LIMIT_REQUESTS < 1` відхиляється."""
+    with pytest.raises(ValueError, match="NLLB_RATE_LIMIT_REQUESTS must be greater than or equal to 1."):
+        Settings(rate_limit_requests=0)
+
+
+def test_settings_reject_invalid_rate_limit_window_seconds() -> None:
+    """Перевіряє, що `NLLB_RATE_LIMIT_WINDOW_SECONDS < 1` відхиляється."""
+    with pytest.raises(ValueError, match="NLLB_RATE_LIMIT_WINDOW_SECONDS must be greater than or equal to 1."):
+        Settings(rate_limit_window_seconds=0)
+
+
 def test_translate_request_enforces_text_length_limit() -> None:
     """Перевіряє, що схема застосовує ліміт `NLLB_REQUEST_TEXT_MAX_LENGTH`."""
     valid_text = "a" * settings.request_text_max_length

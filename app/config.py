@@ -15,22 +15,28 @@ API_TAGS = (
 API_KEY_HEADER_NAME = "X-API-Key"
 HEALTH_ENDPOINT_PATH = "/health"
 TRANSLATE_ENDPOINT_PATH = "/translate"
+LANGUAGES_ENDPOINT_PATH = "/languages"
 HEALTH_OK_STATUS = "ok"
 INVALID_OR_MISSING_API_KEY_DETAIL = "Invalid or missing API key."
 INVALID_OR_MISSING_BEARER_TOKEN_DETAIL = "Invalid or missing bearer token."
+RATE_LIMIT_EXCEEDED_DETAIL = "Rate limit exceeded. Please retry later."
 MODEL_UNAVAILABLE_DETAIL_PREFIX = "Model is unavailable"
 UNSUPPORTED_TARGET_LANGUAGE_DETAIL_TEMPLATE = "Unsupported target_language '{alias}'. Supported: {supported}"
 UNSUPPORTED_SOURCE_LANGUAGE_DETAIL_TEMPLATE = "Unsupported source_language '{alias}'. Supported: {supported}"
 HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE = 422
 HTTP_STATUS_UNAUTHORIZED = 401
 HTTP_STATUS_MODEL_UNAVAILABLE = 503
+HTTP_STATUS_TOO_MANY_REQUESTS = 429
 UNAUTHORIZED_RESPONSE_DESCRIPTION = "Невалідні або відсутні облікові дані авторизації."
 MODEL_UNAVAILABLE_RESPONSE_DESCRIPTION = "Модель недоступна або не ініціалізувалась."
+RATE_LIMIT_RESPONSE_DESCRIPTION = "Перевищено ліміт запитів."
 TRANSLATE_SUMMARY = "Переклад тексту у підтримувану мову"
 TRANSLATE_DESCRIPTION = (
     "Виконує переклад одного тексту (наприклад, арабського `arb_Arab`) "
     "у підтримувану цільову мову."
 )
+LANGUAGES_SUMMARY = "Підтримувані мови"
+LANGUAGES_DESCRIPTION = "Повертає підтримувані alias-и і відповідні NLLB-коди."
 TEXT_MIN_LENGTH = 1
 
 SUPPORTED_TARGET_LANGUAGES = {
@@ -65,6 +71,9 @@ class Settings(BaseSettings):
     transformers_offline: bool = False
     max_length: int = 1024
     request_text_max_length: int = 10_000
+    rate_limit_enabled: bool = False
+    rate_limit_requests: int = 60
+    rate_limit_window_seconds: int = 60
 
     @field_validator("default_target_language")
     @classmethod
@@ -184,6 +193,22 @@ class Settings(BaseSettings):
         """
         if value < TEXT_MIN_LENGTH:
             raise ValueError("NLLB_REQUEST_TEXT_MAX_LENGTH must be greater than or equal to 1.")
+        return value
+
+    @field_validator("rate_limit_requests")
+    @classmethod
+    def validate_rate_limit_requests(cls, value: int) -> int:
+        """Перевіряє ліміт кількості запитів у вікні rate limit."""
+        if value < 1:
+            raise ValueError("NLLB_RATE_LIMIT_REQUESTS must be greater than or equal to 1.")
+        return value
+
+    @field_validator("rate_limit_window_seconds")
+    @classmethod
+    def validate_rate_limit_window_seconds(cls, value: int) -> int:
+        """Перевіряє тривалість вікна rate limit у секундах."""
+        if value < 1:
+            raise ValueError("NLLB_RATE_LIMIT_WINDOW_SECONDS must be greater than or equal to 1.")
         return value
 
 
