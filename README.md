@@ -1,7 +1,6 @@
 # NLLB-200 Translation service
 
 Стартовий каркас API-сервісу перекладу у підтримувані цільові мови на базі `facebook/nllb-200-distilled-600M`.
-Арабська (`arb_Arab`) використовується в документації як приклад вхідної мови.
 
 ## Локальний запуск (venv)
 
@@ -50,22 +49,22 @@ curl http://localhost:8000/health
 curl http://localhost:8000/languages
 ```
 
-### Translate (приклад AR -> RU, default)
+### Translate (приклад -> RU, default)
 
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer change-me-token' \
-  -d '{"text":"مرحبا كيف حالك", "source_language":"ar"}'
+  -d '{"text":"Hello, how are you?", "source_language":"en"}'
 ```
 
-### Translate (приклад AR -> UK)
+### Translate (приклад -> UK)
 
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer change-me-token' \
-  -d '{"text":"مرحبا كيف حالك", "source_language":"ar", "target_language":"uk"}'
+  -d '{"text":"Hello, how are you?", "source_language":"en", "target_language":"uk"}'
 ```
 
 ### Translate (приклад PL -> UK)
@@ -75,6 +74,15 @@ curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer change-me-token' \
   -d '{"text":"Cześć, jak się masz?", "source_language":"pl", "target_language":"uk"}'
+```
+
+### Translate (приклад EN -> UK)
+
+```bash
+curl -X POST http://localhost:8000/translate \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer change-me-token' \
+  -d '{"text":"Hello, how are you?", "source_language":"en", "target_language":"uk"}'
 ```
 
 ## Контроль доступу (API key / Bearer token)
@@ -88,7 +96,8 @@ curl -X POST http://localhost:8000/translate \
 ## Підтримувані мови
 
 Вхідні мови (приклади для payload):
-- `ar` -> `arb_Arab` (арабська, приклад у документації)
+- `ar` -> `arb_Arab`
+- `en` -> `eng_Latn` (англійська)
 - `pl` -> `pol_Latn` (Польща)
 - `sk` -> `slk_Latn` (Словаччина)
 - `hu` -> `hun_Latn` (Угорщина)
