@@ -1,0 +1,70 @@
+### Variables
+@baseUrl = http://localhost:8000
+
+### Health check
+GET {{baseUrl}}/health
+Accept: application/json
+
+### Translate AR -> RU (default via NLLB_DEFAULT_TARGET_LANGUAGE)
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "مرحبا كيف حالك"
+}
+
+### Translate AR -> RU (explicit)
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "مرحبا كيف حالك",
+  "target_language": "ru"
+}
+
+### Translate AR -> UK
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "مرحبا كيف حالك",
+  "target_language": "uk"
+}
+
+### Translate validation error (422: empty text)
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": ""
+}
+
+### Translate validation error (422: unsupported target_language)
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "مرحبا",
+  "target_language": "de"
+}
+
+### Translate service unavailable (503)
+# Для відтворення: запустіть сервіс без доступної моделі/інтернету/кешу.
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "اختبار"
+}
+
+### Swagger UI
+GET {{baseUrl}}/docs
+
+### OpenAPI schema (runtime)
+GET {{baseUrl}}/openapi.json

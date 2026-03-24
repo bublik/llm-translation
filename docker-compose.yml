@@ -1,0 +1,14 @@
+services:
+  nllb-service:
+    build: .
+    container_name: nllb_ar_ru_service
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    restart: unless-stopped
+
+volumes:
+  huggingface_cache:

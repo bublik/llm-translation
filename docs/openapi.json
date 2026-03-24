@@ -1,0 +1,239 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NLLB-200 AR->(RU|UK) Service",
+    "description": "HTTP API для перекладу тексту з арабської (arb_Arab) на російську (rus_Cyrl) або українську (ukr_Cyrl) за допомогою NLLB-200.",
+    "contact": {
+      "name": "Speech Translate Service"
+    },
+    "version": "0.3.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Перевірка доступності сервісу",
+        "description": "Повертає базовий статус живості застосунку.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/translate": {
+      "post": {
+        "tags": [
+          "translation"
+        ],
+        "summary": "Переклад з AR у RU або UK",
+        "description": "Виконує переклад одного тексту з `arb_Arab` у `rus_Cyrl` або `ukr_Cyrl`.",
+        "operationId": "translate_translate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslateResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Модель недоступна або не ініціалізувалась.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "Опис причини помилки."
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "description": "Стандартна помилка API."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "TranslateRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Вхідний текст арабською мовою (arb_Arab).",
+            "examples": [
+              "مرحبا كيف حالك"
+            ]
+          },
+          "target_language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ru",
+                  "uk"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Language",
+            "description": "Цільова мова перекладу: `ru` (російська) або `uk` (українська). Якщо не передано, використовується NLLB_DEFAULT_TARGET_LANGUAGE.",
+            "examples": [
+              "ru",
+              "uk"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TranslateRequest",
+        "description": "Запит на переклад одного текстового фрагмента."
+      },
+      "TranslateResponse": {
+        "properties": {
+          "translation": {
+            "type": "string",
+            "title": "Translation",
+            "description": "Результат перекладу цільовою мовою."
+          },
+          "source_language": {
+            "type": "string",
+            "title": "Source Language",
+            "description": "Код вихідної мови у форматі NLLB."
+          },
+          "target_language": {
+            "type": "string",
+            "title": "Target Language",
+            "description": "Код цільової мови у форматі NLLB."
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "Назва моделі перекладу."
+          }
+        },
+        "type": "object",
+        "required": [
+          "translation",
+          "source_language",
+          "target_language",
+          "model_name"
+        ],
+        "title": "TranslateResponse",
+        "description": "Успішна відповідь сервісу перекладу."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "system",
+      "description": "Службові ендпоінти сервісу."
+    },
+    {
+      "name": "translation",
+      "description": "Ендпоінти перекладу тексту."
+    }
+  ]
+}
