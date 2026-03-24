@@ -6,9 +6,17 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      HF_HOME: /app/storage/huggingface
+      TRANSFORMERS_CACHE: /app/storage/huggingface
+      HF_HUB_CACHE: /app/storage/huggingface
+      TRANSFORMERS_OFFLINE: ${NLLB_TRANSFORMERS_OFFLINE:-0}
     volumes:
-      - huggingface_cache:/root/.cache/huggingface
+      - ${STORAGE_PATH}:/app/storage
+    networks:
+      - shared_net
     restart: unless-stopped
 
-volumes:
-  huggingface_cache:
+networks:
+  shared_net:
+    external: true
