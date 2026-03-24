@@ -1,7 +1,8 @@
 ### Variables
 @baseUrl = http://localhost:8000
+@apiKey = change-me
 
-### Health check
+### Health check (public)
 GET {{baseUrl}}/health
 Accept: application/json
 
@@ -9,6 +10,7 @@ Accept: application/json
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
+X-API-Key: {{apiKey}}
 
 {
   "text": "مرحبا كيف حالك"
@@ -18,6 +20,7 @@ Accept: application/json
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
+X-API-Key: {{apiKey}}
 
 {
   "text": "مرحبا كيف حالك",
@@ -28,6 +31,7 @@ Accept: application/json
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
+X-API-Key: {{apiKey}}
 
 {
   "text": "مرحبا كيف حالك",
@@ -38,6 +42,7 @@ Accept: application/json
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
+X-API-Key: {{apiKey}}
 
 {
   "text": ""
@@ -47,20 +52,21 @@ Accept: application/json
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
+X-API-Key: {{apiKey}}
 
 {
   "text": "مرحبا",
   "target_language": "de"
 }
 
-### Translate service unavailable (503)
-# Для відтворення: запустіть сервіс без доступної моделі/інтернету/кешу.
+### Translate unauthorized (401)
 POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
+X-API-Key: wrong-key
 
 {
-  "text": "اختبار"
+  "text": "مرحبا"
 }
 
 ### Swagger UI

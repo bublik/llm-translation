@@ -29,7 +29,7 @@ docker compose up --build
 
 ## API
 
-### Health
+### Health (public)
 
 ```bash
 curl http://localhost:8000/health
@@ -40,6 +40,7 @@ curl http://localhost:8000/health
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
+  -H 'X-API-Key: change-me' \
   -d '{"text":"مرحبا كيف حالك"}'
 ```
 
@@ -48,8 +49,15 @@ curl -X POST http://localhost:8000/translate \
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
+  -H 'X-API-Key: change-me' \
   -d '{"text":"مرحبا كيف حالك", "target_language":"uk"}'
 ```
+
+## Контроль доступу (API key)
+
+- Auth для `POST /translate` керується env-параметром `NLLB_API_KEY_ENABLED`.
+- Якщо `NLLB_API_KEY_ENABLED=true`, клієнт має передавати `X-API-Key`.
+- Якщо `NLLB_API_KEY_ENABLED=false`, `X-API-Key` не обов'язковий.
 
 ## Підтримувані варіанти цільової мови
 
@@ -64,7 +72,18 @@ curl -X POST http://localhost:8000/translate \
 - `NLLB_MODEL_NAME` (default: `facebook/nllb-200-distilled-600M`)
 - `NLLB_SRC_LANG` (default: `arb_Arab`)
 - `NLLB_DEFAULT_TARGET_LANGUAGE` (default: `ru`, підтримувані: `ru`, `uk`)
+- `NLLB_API_KEY_ENABLED` (default: `false`, допустимі: `true|false`)
+- `NLLB_API_KEY` (default: `change-me`, обов'язковий якщо `NLLB_API_KEY_ENABLED=true`)
 - `NLLB_MAX_LENGTH` (default: `256`)
+
+## CI/CD
+
+- CI workflow: `.github/workflows/ci.yml`
+  - запускає синтаксичну перевірку (`compileall`);
+  - перевіряє актуальність `docs/openapi.json` проти коду.
+- CD workflow (docker compose по SSH): `.github/workflows/cd-compose.yml`
+  - запускається вручну (`workflow_dispatch`);
+  - виконує `git pull` і `docker compose up --build -d` на сервері.
 
 Backward compatibility:
 - Старі клієнти, що не передають `target_language`, продовжать працювати без змін.

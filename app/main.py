@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security, status
+from fastapi.security import APIKeyHeader
 
 from app.config import SUPPORTED_TARGET_LANGUAGES, settings
 from app.schemas import ErrorResponse, TranslateRequest, TranslateResponse
@@ -21,6 +22,7 @@ app = FastAPI(
         {"name": "translation", "description": "Ендпоінти перекладу тексту."},
     ],
 )
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 def get_translator() -> Any:
@@ -60,6 +62,24 @@ def resolve_target_language(target_language: str | None) -> str:
     return resolved_language
 
 
+def require_api_key(api_key: str | None = Security(api_key_header)) -> None:
+    """Перевіряє API-ключ для захищених ендпоінтів.
+
+    Args:
+        api_key: Значення заголовка `X-API-Key` з HTTP-запиту.
+
+    Raises:
+        HTTPException: Якщо ключ відсутній або невалідний.
+    """
+    if not settings.api_key_enabled:
+        return
+    if not api_key or api_key != settings.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key.",
+        )
+
+
 @app.get(
     "/health",
     tags=["system"],
@@ -78,6 +98,10 @@ def health() -> dict[str, str]:
     description="Виконує переклад одного тексту з `arb_Arab` у `rus_Cyrl` або `ukr_Cyrl`.",
     response_model=TranslateResponse,
     responses={
+        401: {
+            "model": ErrorResponse,
+            "description": "Невалідний або відсутній API ключ.",
+        },
         503: {
             "model": ErrorResponse,
             "description": "Модель недоступна або не ініціалізувалась.",
@@ -86,6 +110,7 @@ def health() -> dict[str, str]:
 )
 def translate(
     payload: TranslateRequest,
+    _: None = Depends(require_api_key),
     translator: Any = Depends(get_translator),
 ) -> TranslateResponse:
     """Приймає текст і повертає переклад із метаданими моделі.
