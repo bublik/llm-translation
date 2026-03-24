@@ -1,6 +1,7 @@
 ### Variables
 @baseUrl = http://localhost:8000
 @apiKey = change-me
+@bearerToken = change-me-token
 
 ### Health check (public)
 GET {{baseUrl}}/health
@@ -11,6 +12,7 @@ POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: {{apiKey}}
+Authorization: Bearer {{bearerToken}}
 
 {
   "text": "مرحبا كيف حالك",
@@ -22,9 +24,11 @@ POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: {{apiKey}}
+Authorization: Bearer {{bearerToken}}
 
 {
   "text": "مرحبا كيف حالك",
+  "source_language": "ar",
   "target_language": "ru"
 }
 
@@ -33,6 +37,7 @@ POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: {{apiKey}}
+Authorization: Bearer {{bearerToken}}
 
 {
   "text": "مرحبا كيف حالك",
@@ -45,6 +50,7 @@ POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: {{apiKey}}
+Authorization: Bearer {{bearerToken}}
 
 {
   "text": "Cześć, jak się masz?",
@@ -57,9 +63,11 @@ POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: {{apiKey}}
+Authorization: Bearer {{bearerToken}}
 
 {
-  "text": ""
+  "text": "",
+  "source_language": "ar"
 }
 
 ### Translate validation error (422: unsupported target_language)
@@ -67,9 +75,11 @@ POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: {{apiKey}}
+Authorization: Bearer {{bearerToken}}
 
 {
   "text": "مرحبا",
+  "source_language": "ar",
   "target_language": "de"
 }
 
@@ -78,9 +88,11 @@ POST {{baseUrl}}/translate
 Content-Type: application/json
 Accept: application/json
 X-API-Key: wrong-key
+Authorization: Bearer wrong-token
 
 {
-  "text": "مرحبا"
+  "text": "مرحبا",
+  "source_language": "ar"
 }
 
 ### Swagger UI

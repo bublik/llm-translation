@@ -49,7 +49,7 @@ curl http://localhost:8000/health
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
-  -H 'X-API-Key: change-me' \
+  -H 'Authorization: Bearer change-me-token' \
   -d '{"text":"مرحبا كيف حالك"}'
 ```
 
@@ -58,7 +58,7 @@ curl -X POST http://localhost:8000/translate \
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
-  -H 'X-API-Key: change-me' \
+  -H 'Authorization: Bearer change-me-token' \
   -d '{"text":"مرحبا كيف حالك", "target_language":"uk"}'
 ```
 
@@ -67,15 +67,17 @@ curl -X POST http://localhost:8000/translate \
 ```bash
 curl -X POST http://localhost:8000/translate \
   -H 'Content-Type: application/json' \
-  -H 'X-API-Key: change-me' \
+  -H 'Authorization: Bearer change-me-token' \
   -d '{"text":"Cześć, jak się masz?", "source_language":"pl", "target_language":"uk"}'
 ```
 
-## Контроль доступу (API key)
+## Контроль доступу (API key / Bearer token)
 
-- Auth для `POST /translate` керується env-параметром `NLLB_API_KEY_ENABLED`.
-- Якщо `NLLB_API_KEY_ENABLED=true`, клієнт має передавати `X-API-Key`.
-- Якщо `NLLB_API_KEY_ENABLED=false`, `X-API-Key` не обов'язковий.
+- Auth для `POST /translate` керується env-параметрами `NLLB_API_KEY_ENABLED` і `NLLB_BEARER_TOKEN_ENABLED`.
+- Якщо увімкнено `NLLB_API_KEY_ENABLED=true`, клієнт може передавати `X-API-Key`.
+- Якщо увімкнено `NLLB_BEARER_TOKEN_ENABLED=true`, клієнт може передавати `Authorization: Bearer <token>`.
+- Якщо обидва режими увімкнені, достатньо одного валідного методу.
+- Якщо обидва режими вимкнені, авторизація не потрібна.
 
 ## Підтримувані мови
 
@@ -94,7 +96,7 @@ curl -X POST http://localhost:8000/translate \
 - `uk` -> `ukr_Cyrl`
 
 Параметр `target_language` у запиті опційний. Якщо не переданий, сервіс використовує дефолт із `NLLB_DEFAULT_TARGET_LANGUAGE`.
-Параметр `source_language` у запиті опційний. Якщо не переданий, сервіс використовує `NLLB_SRC_LANG`.
+Параметр `source_language` у запиті обов'язковий.
 
 Повний список мов які можна підключити
 https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/README.md
@@ -103,10 +105,11 @@ https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/README.md
 
 Через env (`.env`):
 - `NLLB_MODEL_NAME` (default: `facebook/nllb-200-distilled-600M`)
-- `NLLB_SRC_LANG` (default: `arb_Arab`)
 - `NLLB_DEFAULT_TARGET_LANGUAGE` (default: `ru`, підтримувані: `ru`, `uk`)
 - `NLLB_API_KEY_ENABLED` (default: `false`, допустимі: `true|false`)
 - `NLLB_API_KEY` (default: `change-me`, обов'язковий якщо `NLLB_API_KEY_ENABLED=true`)
+- `NLLB_BEARER_TOKEN_ENABLED` (default: `false`, допустимі: `true|false`)
+- `NLLB_BEARER_TOKEN` (default: `change-me-token`, обов'язковий якщо `NLLB_BEARER_TOKEN_ENABLED=true`)
 - `NLLB_MODEL_CACHE_DIR` (default: `/app/storage/huggingface`, локальний кеш model/tokenizer)
 - `NLLB_TRANSFORMERS_OFFLINE` (default: `0`, `1` вмикає офлайн-режим HuggingFace)
 - `NLLB_MAX_LENGTH` (default: `1024`; `0` = без обмеження довжини генерації; `1024` ~= до однієї сторінки друкованого тексту)
@@ -115,4 +118,5 @@ https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/README.md
 
 Backward compatibility:
 - Старі клієнти, що не передають `target_language`, продовжать працювати без змін.
+- Клієнти тепер мають явно передавати `source_language` у кожному запиті `/translate`.
 - `NLLB_TGT_LANG` більше не використовується в API-логіці вибору цілі; замість нього використовується `NLLB_DEFAULT_TARGET_LANGUAGE`.

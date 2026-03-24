@@ -41,7 +41,7 @@ def test_translate_uses_default_ru_target_language() -> None:
     app.state.translator = DummyTranslator()
     client = TestClient(app)
 
-    response = client.post("/translate", json={"text": "مرحبا"})
+    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar"})
     payload = response.json()
 
     assert response.status_code == 200
@@ -55,7 +55,7 @@ def test_translate_to_ukrainian() -> None:
     app.state.translator = DummyTranslator()
     client = TestClient(app)
 
-    response = client.post("/translate", json={"text": "مرحبا", "target_language": "uk"})
+    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar", "target_language": "uk"})
     payload = response.json()
 
     assert response.status_code == 200
@@ -69,7 +69,7 @@ def test_translate_to_russian_explicitly() -> None:
     app.state.translator = DummyTranslator()
     client = TestClient(app)
 
-    response = client.post("/translate", json={"text": "مرحبا", "target_language": "ru"})
+    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar", "target_language": "ru"})
     payload = response.json()
 
     assert response.status_code == 200
@@ -82,11 +82,23 @@ def test_translate_rejects_unsupported_target_language() -> None:
     app.state.translator = DummyTranslator()
     client = TestClient(app)
 
-    response = client.post("/translate", json={"text": "مرحبا", "target_language": "de"})
+    response = client.post("/translate", json={"text": "مرحبا", "source_language": "ar", "target_language": "de"})
     payload = response.json()
 
     assert response.status_code == 422
     assert payload["detail"][0]["loc"] == ["body", "target_language"]
+
+
+def test_translate_rejects_missing_source_language() -> None:
+    """Перевіряє, що `source_language` є обов'язковим полем запиту."""
+    app.state.translator = DummyTranslator()
+    client = TestClient(app)
+
+    response = client.post("/translate", json={"text": "مرحبا", "target_language": "ru"})
+    payload = response.json()
+
+    assert response.status_code == 422
+    assert payload["detail"][0]["loc"] == ["body", "source_language"]
 
 
 def test_translate_resolves_source_language_alias() -> None:

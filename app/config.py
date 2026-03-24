@@ -17,13 +17,14 @@ HEALTH_ENDPOINT_PATH = "/health"
 TRANSLATE_ENDPOINT_PATH = "/translate"
 HEALTH_OK_STATUS = "ok"
 INVALID_OR_MISSING_API_KEY_DETAIL = "Invalid or missing API key."
+INVALID_OR_MISSING_BEARER_TOKEN_DETAIL = "Invalid or missing bearer token."
 MODEL_UNAVAILABLE_DETAIL_PREFIX = "Model is unavailable"
 UNSUPPORTED_TARGET_LANGUAGE_DETAIL_TEMPLATE = "Unsupported target_language '{alias}'. Supported: {supported}"
 UNSUPPORTED_SOURCE_LANGUAGE_DETAIL_TEMPLATE = "Unsupported source_language '{alias}'. Supported: {supported}"
 HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE = 422
 HTTP_STATUS_UNAUTHORIZED = 401
 HTTP_STATUS_MODEL_UNAVAILABLE = 503
-UNAUTHORIZED_RESPONSE_DESCRIPTION = "Невалідний або відсутній API ключ."
+UNAUTHORIZED_RESPONSE_DESCRIPTION = "Невалідні або відсутні облікові дані авторизації."
 MODEL_UNAVAILABLE_RESPONSE_DESCRIPTION = "Модель недоступна або не ініціалізувалась."
 TRANSLATE_SUMMARY = "Переклад тексту у підтримувану мову"
 TRANSLATE_DESCRIPTION = (
@@ -54,11 +55,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="NLLB_", env_file=".env", extra="ignore")
 
     model_name: str = "facebook/nllb-200-distilled-600M"
-    src_lang: str = "arb_Arab"
     tgt_lang: str = "rus_Cyrl"
     default_target_language: str = "ru"
     api_key_enabled: bool = False
     api_key: str | None = None
+    bearer_token_enabled: bool = False
+    bearer_token: str | None = None
     model_cache_dir: str = "/app/storage/huggingface"
     transformers_offline: bool = False
     max_length: int = 1024
@@ -102,11 +104,31 @@ class Settings(BaseSettings):
             return None
         return normalized_value
 
+    @field_validator("bearer_token")
+    @classmethod
+    def validate_bearer_token(cls, value: str | None) -> str | None:
+        """Перевіряє формат bearer токена доступу.
+
+        Args:
+            value: Значення bearer-токена з env.
+
+        Returns:
+            Обрізане значення токена або None.
+        """
+        if value is None:
+            return None
+        normalized_value = value.strip()
+        if not normalized_value:
+            return None
+        return normalized_value
+
     @model_validator(mode="after")
     def validate_auth_settings(self) -> "Settings":
         """Перевіряє узгодженість auth-настройок."""
         if self.api_key_enabled and not self.api_key:
             raise ValueError("NLLB_API_KEY must be set when NLLB_API_KEY_ENABLED=true.")
+        if self.bearer_token_enabled and not self.bearer_token:
+            raise ValueError("NLLB_BEARER_TOKEN must be set when NLLB_BEARER_TOKEN_ENABLED=true.")
         return self
 
     @field_validator("max_length")

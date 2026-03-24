@@ -20,7 +20,7 @@
 
 ## 3. Аутентифікація
 
-Підтримується заголовок `X-API-Key` для захищених ендпоінтів.
+Підтримуються заголовки `X-API-Key` і `Authorization: Bearer ...` для захищених ендпоінтів.
 
 - Health-check (`GET /health`) працює без ключа.
 - Translate (`POST /translate`) перевіряє ключ, якщо `NLLB_API_KEY_ENABLED=true`.
@@ -29,12 +29,14 @@
 
 - `NLLB_API_KEY_ENABLED=true|false`
 - `NLLB_API_KEY=<секрет>`
+- `NLLB_BEARER_TOKEN_ENABLED=true|false`
+- `NLLB_BEARER_TOKEN=<секрет>`
 
 Приклад:
 
 ```http
 POST /translate
-X-API-Key: your-secret-key
+Authorization: Bearer your-secret-token
 Content-Type: application/json
 ```
 
@@ -67,7 +69,7 @@ Request body:
 Параметри:
 
 - `text` (required): текст для перекладу, довжина `1..NLLB_REQUEST_TEXT_MAX_LENGTH` (дефолт: `10000`)
-- `source_language` (optional): alias вхідної мови; якщо не передано, використовується `NLLB_SRC_LANG`
+- `source_language` (required): alias вхідної мови
 - `target_language` (optional): alias цільової мови
   - `ru` -> `rus_Cyrl`
   - `uk` -> `ukr_Cyrl`
@@ -102,7 +104,7 @@ Response `200`:
 
 ### 5.1 `401 Unauthorized`
 
-Причина: `X-API-Key` відсутній або невалідний (коли auth увімкнено).
+Причина: відсутні або невалідні `X-API-Key` / `Authorization: Bearer ...` (коли auth увімкнено).
 
 ### 5.2 `422 Unprocessable Entity`
 
@@ -133,7 +135,7 @@ Response `200`:
 ## 8. Мінімальний чекліст інтеграції
 
 1. Налаштувати base URL для середовища.
-2. Налаштувати `X-API-Key` на стороні клієнта (якщо auth увімкнено).
+2. Налаштувати `X-API-Key` або `Authorization: Bearer ...` на стороні клієнта (якщо auth увімкнено).
 3. Реалізувати health-check (`GET /health`).
 4. Реалізувати виклик `POST /translate` з `target_language=ru|uk`.
 5. Додати обробку `401`, `422`, `503`.

@@ -65,7 +65,7 @@
             }
           },
           "401": {
-            "description": "Невалідний або відсутній API ключ.",
+            "description": "Невалідні або відсутні облікові дані авторизації.",
             "content": {
               "application/json": {
                 "schema": {
@@ -98,6 +98,9 @@
         "security": [
           {
             "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
           }
         ]
       }
@@ -166,26 +169,19 @@
             ]
           },
           "source_language": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "ar",
-                  "pl",
-                  "sk",
-                  "hu",
-                  "ro",
-                  "md",
-                  "be",
-                  "ru"
-                ]
-              },
-              {
-                "type": "null"
-              }
+            "type": "string",
+            "enum": [
+              "ar",
+              "pl",
+              "sk",
+              "hu",
+              "ro",
+              "md",
+              "be",
+              "ru"
             ],
             "title": "Source Language",
-            "description": "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`. Якщо не передано, використовується `NLLB_SRC_LANG`.",
+            "description": "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`.",
             "examples": [
               "ar",
               "pl",
@@ -195,7 +191,8 @@
         },
         "type": "object",
         "required": [
-          "text"
+          "text",
+          "source_language"
         ],
         "title": "TranslateRequest",
         "description": "Запит на переклад одного текстового фрагмента."
@@ -272,6 +269,10 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key"
+      },
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   },

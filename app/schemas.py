@@ -21,11 +21,9 @@ class TranslateRequest(BaseModel):
         description="Цільова мова перекладу: `ru` (російська) або `uk` (українська). Якщо не передано, використовується NLLB_DEFAULT_TARGET_LANGUAGE.",
         examples=["ru", "uk"],
     )
-    source_language: SourceLanguageAlias | None = Field(
-        default=None,
+    source_language: SourceLanguageAlias = Field(
         description=(
-            "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`. "
-            "Якщо не передано, використовується `NLLB_SRC_LANG`."
+            "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`."
         ),
         examples=["ar", "pl", "ro"],
     )

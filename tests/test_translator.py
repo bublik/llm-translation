@@ -184,14 +184,32 @@ def test_settings_reject_invalid_request_text_max_length() -> None:
         Settings(request_text_max_length=0)
 
 
+def test_settings_require_bearer_token_when_enabled() -> None:
+    """Перевіряє, що `NLLB_BEARER_TOKEN` обов'язковий при enabled-прапорці."""
+    with pytest.raises(ValueError, match="NLLB_BEARER_TOKEN must be set when NLLB_BEARER_TOKEN_ENABLED=true."):
+        Settings(bearer_token_enabled=True, bearer_token=None)
+
+
+def test_settings_accept_bearer_token_when_enabled() -> None:
+    """Перевіряє, що bearer-токен приймається при enabled-прапорці."""
+    cfg = Settings(bearer_token_enabled=True, bearer_token="token-123")
+    assert cfg.bearer_token == "token-123"
+
+
 def test_translate_request_enforces_text_length_limit() -> None:
     """Перевіряє, що схема застосовує ліміт `NLLB_REQUEST_TEXT_MAX_LENGTH`."""
     valid_text = "a" * settings.request_text_max_length
-    payload = TranslateRequest(text=valid_text)
+    payload = TranslateRequest(text=valid_text, source_language="ar")
     assert payload.text == valid_text
 
     with pytest.raises(ValidationError):
-        TranslateRequest(text="a" * (settings.request_text_max_length + 1))
+        TranslateRequest(text="a" * (settings.request_text_max_length + 1), source_language="ar")
+
+
+def test_translate_request_requires_source_language() -> None:
+    """Перевіряє, що `source_language` є обов'язковим полем схеми."""
+    with pytest.raises(ValidationError):
+        TranslateRequest(text="مرحبا")
 
 
 def test_supported_source_languages_include_ukraine_neighboring_countries() -> None:

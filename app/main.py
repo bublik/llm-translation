@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Security
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import (
     API_CONTACT_NAME,
@@ -16,6 +16,7 @@ from app.config import (
     HTTP_STATUS_UNAUTHORIZED,
     HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE,
     INVALID_OR_MISSING_API_KEY_DETAIL,
+    INVALID_OR_MISSING_BEARER_TOKEN_DETAIL,
     MODEL_UNAVAILABLE_DETAIL_PREFIX,
     MODEL_UNAVAILABLE_RESPONSE_DESCRIPTION,
     SUPPORTED_SOURCE_LANGUAGES,
@@ -41,6 +42,7 @@ app = FastAPI(
     openapi_tags=list(API_TAGS),
 )
 api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_translator() -> Any:
@@ -83,7 +85,7 @@ def resolve_target_language(target_language: str | None) -> str:
     return resolved_language
 
 
-def resolve_source_language(source_language: str | None) -> str:
+def resolve_source_language(source_language: str) -> str:
     """Визначає NLLB-код вхідної мови для поточного запиту.
 
     Args:
@@ -95,9 +97,6 @@ def resolve_source_language(source_language: str | None) -> str:
     Raises:
         HTTPException: Якщо alias не підтримується.
     """
-    if source_language is None:
-        return settings.src_lang
-
     alias = source_language.strip().lower()
     resolved_language = SUPPORTED_SOURCE_LANGUAGES.get(alias)
     if resolved_language is None:
@@ -109,22 +108,50 @@ def resolve_source_language(source_language: str | None) -> str:
     return resolved_language
 
 
-def require_api_key(api_key: str | None = Security(api_key_header)) -> None:
-    """Перевіряє API-ключ для захищених ендпоінтів.
+def is_authorized_request(api_key: str | None, bearer_token: str | None) -> bool:
+    """Перевіряє, чи запит містить валідні авторизаційні дані.
+
+    Args:
+        api_key: Значення заголовка `X-API-Key`.
+        bearer_token: Значення bearer-токена без префікса `Bearer`.
+
+    Returns:
+        `True`, якщо запит авторизований згідно поточних налаштувань.
+    """
+    api_key_required = settings.api_key_enabled
+    bearer_required = settings.bearer_token_enabled
+    if not api_key_required and not bearer_required:
+        return True
+
+    valid_api_key = api_key_required and bool(api_key and api_key == settings.api_key)
+    valid_bearer = bearer_required and bool(bearer_token and bearer_token == settings.bearer_token)
+    return valid_api_key or valid_bearer
+
+
+def require_auth(
+    api_key: str | None = Security(api_key_header),
+    bearer: HTTPAuthorizationCredentials | None = Security(bearer_scheme),
+) -> None:
+    """Перевіряє API-ключ або bearer-токен для захищених ендпоінтів.
 
     Args:
         api_key: Значення заголовка `X-API-Key` з HTTP-запиту.
+        bearer: Облікові дані з заголовка `Authorization: Bearer ...`.
 
     Raises:
-        HTTPException: Якщо ключ відсутній або невалідний.
+        HTTPException: Якщо облікові дані відсутні або невалідні.
     """
-    if not settings.api_key_enabled:
+    bearer_token = None
+    if bearer and bearer.scheme.lower() == "bearer":
+        bearer_token = bearer.credentials
+
+    if is_authorized_request(api_key=api_key, bearer_token=bearer_token):
         return
-    if not api_key or api_key != settings.api_key:
-        raise HTTPException(
-            status_code=HTTP_STATUS_UNAUTHORIZED,
-            detail=INVALID_OR_MISSING_API_KEY_DETAIL,
-        )
+
+    detail = INVALID_OR_MISSING_API_KEY_DETAIL
+    if settings.bearer_token_enabled and not settings.api_key_enabled:
+        detail = INVALID_OR_MISSING_BEARER_TOKEN_DETAIL
+    raise HTTPException(status_code=HTTP_STATUS_UNAUTHORIZED, detail=detail)
 
 
 @app.get(
@@ -157,7 +184,7 @@ def health() -> dict[str, str]:
 )
 def translate(
     payload: TranslateRequest,
-    _: None = Depends(require_api_key),
+    _: None = Depends(require_auth),
     translator: Any = Depends(get_translator),
 ) -> TranslateResponse:
     """Приймає текст і повертає переклад із метаданими моделі.
