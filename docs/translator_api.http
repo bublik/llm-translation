@@ -62,6 +62,19 @@ Authorization: Bearer {{bearerToken}}
   "target_language": "uk"
 }
 
+### Translate (example EN -> UK)
+POST {{baseUrl}}/translate
+Content-Type: application/json
+Accept: application/json
+X-API-Key: {{apiKey}}
+Authorization: Bearer {{bearerToken}}
+
+{
+  "text": "Hello, how are you?",
+  "source_language": "en",
+  "target_language": "uk"
+}
+
 ### Translate validation error (422: empty text)
 POST {{baseUrl}}/translate
 Content-Type: application/json

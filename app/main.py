@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
+from lingua import Language, LanguageDetectorBuilder
+
 from app.config import (
+    LANGUAGE_DETECTION_FAILED_DETAIL,
     LANGUAGES_DESCRIPTION,
     LANGUAGES_ENDPOINT_PATH,
     LANGUAGES_SUMMARY,
@@ -41,6 +44,84 @@ from app.config import (
     UNSUPPORTED_TARGET_LANGUAGE_DETAIL_TEMPLATE,
     settings,
 )
+
+_DETECTION_LANGUAGE_MAP: dict[Language, str] = {
+    Language.AFRIKAANS: "afr_Latn",
+    Language.ARABIC: "arb_Arab",
+    Language.ARMENIAN: "hye_Armn",
+    Language.AZERBAIJANI: "azj_Latn",
+    Language.BASQUE: "eus_Latn",
+    Language.BELARUSIAN: "bel_Cyrl",
+    Language.BENGALI: "ben_Beng",
+    Language.BOKMAL: "nob_Latn",
+    Language.BOSNIAN: "bos_Latn",
+    Language.BULGARIAN: "bul_Cyrl",
+    Language.CATALAN: "cat_Latn",
+    Language.CHINESE: "zho_Hans",
+    Language.CROATIAN: "hrv_Latn",
+    Language.CZECH: "ces_Latn",
+    Language.DANISH: "dan_Latn",
+    Language.DUTCH: "nld_Latn",
+    Language.ENGLISH: "eng_Latn",
+    Language.ESPERANTO: "epo_Latn",
+    Language.ESTONIAN: "est_Latn",
+    Language.FINNISH: "fin_Latn",
+    Language.FRENCH: "fra_Latn",
+    Language.GANDA: "lug_Latn",
+    Language.GEORGIAN: "kat_Geor",
+    Language.GERMAN: "deu_Latn",
+    Language.GREEK: "ell_Grek",
+    Language.GUJARATI: "guj_Gujr",
+    Language.HEBREW: "heb_Hebr",
+    Language.HINDI: "hin_Deva",
+    Language.HUNGARIAN: "hun_Latn",
+    Language.ICELANDIC: "isl_Latn",
+    Language.INDONESIAN: "ind_Latn",
+    Language.IRISH: "gle_Latn",
+    Language.ITALIAN: "ita_Latn",
+    Language.JAPANESE: "jpn_Jpan",
+    Language.KAZAKH: "kaz_Cyrl",
+    Language.KOREAN: "kor_Hang",
+    Language.LATVIAN: "lvs_Latn",
+    Language.LITHUANIAN: "lit_Latn",
+    Language.MACEDONIAN: "mkd_Cyrl",
+    Language.MALAY: "zsm_Latn",
+    Language.MAORI: "mri_Latn",
+    Language.MARATHI: "mar_Deva",
+    Language.MONGOLIAN: "khk_Cyrl",
+    Language.NYNORSK: "nno_Latn",
+    Language.PERSIAN: "pes_Arab",
+    Language.POLISH: "pol_Latn",
+    Language.PORTUGUESE: "por_Latn",
+    Language.PUNJABI: "pan_Guru",
+    Language.ROMANIAN: "ron_Latn",
+    Language.RUSSIAN: "rus_Cyrl",
+    Language.SERBIAN: "srp_Cyrl",
+    Language.SHONA: "sna_Latn",
+    Language.SLOVAK: "slk_Latn",
+    Language.SLOVENE: "slv_Latn",
+    Language.SOMALI: "som_Latn",
+    Language.SOTHO: "sot_Latn",
+    Language.SPANISH: "spa_Latn",
+    Language.SWAHILI: "swh_Latn",
+    Language.SWEDISH: "swe_Latn",
+    Language.TAGALOG: "tgl_Latn",
+    Language.TAMIL: "tam_Taml",
+    Language.TELUGU: "tel_Telu",
+    Language.THAI: "tha_Thai",
+    Language.TSONGA: "tso_Latn",
+    Language.TSWANA: "tsn_Latn",
+    Language.TURKISH: "tur_Latn",
+    Language.UKRAINIAN: "ukr_Cyrl",
+    Language.URDU: "urd_Arab",
+    Language.VIETNAMESE: "vie_Latn",
+    Language.WELSH: "cym_Latn",
+    Language.XHOSA: "xho_Latn",
+    Language.YORUBA: "yor_Latn",
+    Language.ZULU: "zul_Latn",
+}
+_language_detector = None
+
 from app.schemas import ErrorResponse, LanguagesResponse, TranslateRequest, TranslateResponse
 
 if TYPE_CHECKING:
@@ -100,18 +181,53 @@ def resolve_target_language(target_language: str | None) -> str:
     return resolved_language
 
 
-def resolve_source_language(source_language: str) -> str:
-    """Визначає NLLB-код вхідної мови для поточного запиту.
+def _get_language_detector():
+    """Повертає синглтон детектора мови, ініціалізуючи його за першого виклику."""
+    global _language_detector
+    if _language_detector is None:
+        _language_detector = (
+            LanguageDetectorBuilder.from_languages(*_DETECTION_LANGUAGE_MAP.keys()).build()
+        )
+    return _language_detector
+
+
+def _detect_language(text: str) -> str:
+    """Автоматично визначає NLLB-код вхідної мови тексту.
 
     Args:
-        source_language: Alias вхідної мови з запиту.
+        text: Вхідний текст для аналізу.
 
     Returns:
         Код вхідної мови NLLB.
 
     Raises:
-        HTTPException: Якщо alias не підтримується.
+        HTTPException: Якщо мову не вдалося визначити.
     """
+    detected = _get_language_detector().detect_language_of(text)
+    nllb_code = _DETECTION_LANGUAGE_MAP.get(detected) if detected is not None else None
+    if nllb_code is None:
+        raise HTTPException(
+            status_code=HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE,
+            detail=LANGUAGE_DETECTION_FAILED_DETAIL,
+        )
+    return nllb_code
+
+
+def resolve_source_language(source_language: str | None, text: str = "") -> str:
+    """Визначає NLLB-код вхідної мови для поточного запиту.
+
+    Args:
+        source_language: Alias вхідної мови, NLLB-код, `"auto"` або `None` для автодетекції.
+        text: Вхідний текст — використовується лише при автодетекції.
+
+    Returns:
+        Код вхідної мови NLLB.
+
+    Raises:
+        HTTPException: Якщо alias не підтримується або мову не вдалося визначити.
+    """
+    if source_language is None or source_language.strip().lower() == "auto":
+        return _detect_language(text)
     alias = source_language.strip().lower()
     resolved_language = SUPPORTED_SOURCE_LANGUAGES.get(alias)
     if resolved_language is None:
@@ -273,7 +389,7 @@ def translate(
     """
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     started_at = time.perf_counter()
-    resolved_source_language = resolve_source_language(payload.source_language)
+    resolved_source_language = resolve_source_language(payload.source_language, payload.text)
     resolved_target_language = resolve_target_language(payload.target_language)
     device = get_model_device(translator)
     segments = 1

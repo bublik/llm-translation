@@ -4,8 +4,6 @@ from pydantic import BaseModel, Field
 
 from app.config import TEXT_MIN_LENGTH, settings
 
-SourceLanguageAlias = Literal["ar", "pl", "sk", "hu", "ro", "md", "be", "ru"]
-
 
 class TranslateRequest(BaseModel):
     """Запит на переклад одного текстового фрагмента."""
@@ -13,7 +11,7 @@ class TranslateRequest(BaseModel):
     text: str = Field(
         min_length=TEXT_MIN_LENGTH,
         max_length=settings.request_text_max_length,
-        description="Вхідний текст для перекладу (наприклад, арабською `arb_Arab`).",
+        description="Вхідний текст для перекладу.",
         examples=["مرحبا كيف حالك"],
     )
     target_language: Literal["ru", "uk"] | None = Field(
@@ -21,11 +19,15 @@ class TranslateRequest(BaseModel):
         description="Цільова мова перекладу: `ru` (російська) або `uk` (українська). Якщо не передано, використовується NLLB_DEFAULT_TARGET_LANGUAGE.",
         examples=["ru", "uk"],
     )
-    source_language: SourceLanguageAlias = Field(
+    source_language: str | None = Field(
+        default=None,
         description=(
-            "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`."
+            "Alias вхідної мови або NLLB-код (наприклад, `arb_Arab`, `eng_Latn`). "
+            "Передайте auto або не передавайте поле — мова визначиться автоматично. "
+            "Підтримуються всі 200 мов NLLB-200, а також короткі alias-и: "
+            "`ar`, `en`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`."
         ),
-        examples=["ar", "pl", "ro"],
+        examples=["auto", "ar", "arb_Arab", "pol_Latn"],
     )
 
 

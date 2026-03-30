@@ -1,3 +1,4 @@
+import app.main as main_module
 from starlette.requests import Request
 
 from app.main import health, languages, rate_limit_buckets, require_rate_limit, settings, translate
@@ -40,6 +41,7 @@ def test_languages() -> None:
     """Перевіряє, що `/languages` повертає source/target мапи."""
     payload = languages()
     assert payload.source_languages["pl"] == "pol_Latn"
+    assert payload.source_languages["en"] == "eng_Latn"
     assert payload.target_languages["uk"] == "ukr_Cyrl"
 
 
@@ -66,6 +68,48 @@ def test_translate_resolves_source_language_alias() -> None:
     assert response.source_language == "pol_Latn"
     assert response.target_language == "ukr_Cyrl"
     assert translator.last_source_language == "pol_Latn"
+
+
+def test_translate_auto_detects_source_language(monkeypatch) -> None:
+    """Перевіряє автодетекцію вхідної мови, якщо source_language не передано."""
+    monkeypatch.setattr(main_module, "_detect_language", lambda text: "pol_Latn")
+    translator = DummyTranslator()
+    payload = TranslateRequest(text="Cześć", target_language="uk")
+
+    response = translate(request=_build_request(), payload=payload, _=None, __=None, translator=translator)
+
+    assert response.source_language == "pol_Latn"
+    assert response.target_language == "ukr_Cyrl"
+    assert translator.last_source_language == "pol_Latn"
+
+
+def test_translate_auto_keyword_triggers_detection(monkeypatch) -> None:
+    """Перевіряє, що source_language='auto' активує автодетекцію."""
+    monkeypatch.setattr(main_module, "_detect_language", lambda text: "deu_Latn")
+    translator = DummyTranslator()
+    payload = TranslateRequest(text="Hallo", source_language="auto")
+
+    response = translate(request=_build_request(), payload=payload, _=None, __=None, translator=translator)
+
+    assert response.source_language == "deu_Latn"
+
+
+def test_translate_raises_422_when_language_not_detected(monkeypatch) -> None:
+    """Перевіряє `422`, якщо автодетекція не змогла визначити мову."""
+    from fastapi import HTTPException
+
+    def _fail(_text: str) -> str:
+        raise HTTPException(status_code=422, detail="Could not detect source language.")
+
+    monkeypatch.setattr(main_module, "_detect_language", _fail)
+    translator = DummyTranslator()
+    payload = TranslateRequest(text="???")
+
+    try:
+        translate(request=_build_request(), payload=payload, _=None, __=None, translator=translator)
+        assert False, "Очікувався HTTPException(422)"
+    except HTTPException as exc:
+        assert exc.status_code == 422
 
 
 def test_rate_limit_exceeded(monkeypatch) -> None:

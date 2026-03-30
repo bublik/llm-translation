@@ -23,6 +23,7 @@ RATE_LIMIT_EXCEEDED_DETAIL = "Rate limit exceeded. Please retry later."
 MODEL_UNAVAILABLE_DETAIL_PREFIX = "Model is unavailable"
 UNSUPPORTED_TARGET_LANGUAGE_DETAIL_TEMPLATE = "Unsupported target_language '{alias}'. Supported: {supported}"
 UNSUPPORTED_SOURCE_LANGUAGE_DETAIL_TEMPLATE = "Unsupported source_language '{alias}'. Supported: {supported}"
+LANGUAGE_DETECTION_FAILED_DETAIL = "Could not detect source language. Please specify source_language explicitly."
 HTTP_STATUS_UNSUPPORTED_TARGET_LANGUAGE = 422
 HTTP_STATUS_UNAUTHORIZED = 401
 HTTP_STATUS_MODEL_UNAVAILABLE = 503
@@ -43,15 +44,220 @@ SUPPORTED_TARGET_LANGUAGES = {
     "ru": "rus_Cyrl",
     "uk": "ukr_Cyrl",
 }
-SUPPORTED_SOURCE_LANGUAGES = {
+SUPPORTED_SOURCE_LANGUAGES: dict[str, str] = {
+    # Короткі alias-и для зворотної сумісності
     "ar": "arb_Arab",
-    "pl": "pol_Latn",  # Poland
-    "sk": "slk_Latn",  # Slovakia
-    "hu": "hun_Latn",  # Hungary
-    "ro": "ron_Latn",  # Romania
+    "en": "eng_Latn",
+    "pl": "pol_Latn",
+    "sk": "slk_Latn",
+    "hu": "hun_Latn",
+    "ro": "ron_Latn",
     "md": "ron_Latn",  # Moldova (Romanian)
-    "be": "bel_Cyrl",  # Belarus
-    "ru": "rus_Cyrl",  # Russia
+    "be": "bel_Cyrl",
+    "ru": "rus_Cyrl",
+    # Усі 200 мов NLLB-200 (alias = NLLB-код)
+    "ace_Arab": "ace_Arab",  # Acehnese (Arabic script)
+    "ace_Latn": "ace_Latn",  # Acehnese (Latin script)
+    "acm_Arab": "acm_Arab",  # Mesopotamian Arabic
+    "acq_Arab": "acq_Arab",  # Ta'izzi-Adeni Arabic
+    "aeb_Arab": "aeb_Arab",  # Tunisian Arabic
+    "afr_Latn": "afr_Latn",  # Afrikaans
+    "ajp_Arab": "ajp_Arab",  # South Levantine Arabic
+    "aka_Latn": "aka_Latn",  # Akan
+    "amh_Ethi": "amh_Ethi",  # Amharic
+    "apc_Arab": "apc_Arab",  # North Levantine Arabic
+    "arb_Arab": "arb_Arab",  # Modern Standard Arabic
+    "ars_Arab": "ars_Arab",  # Najdi Arabic
+    "ary_Arab": "ary_Arab",  # Moroccan Arabic
+    "arz_Arab": "arz_Arab",  # Egyptian Arabic
+    "asm_Beng": "asm_Beng",  # Assamese
+    "ast_Latn": "ast_Latn",  # Asturian
+    "awa_Deva": "awa_Deva",  # Awadhi
+    "ayr_Latn": "ayr_Latn",  # Central Aymara
+    "azb_Arab": "azb_Arab",  # South Azerbaijani
+    "azj_Latn": "azj_Latn",  # North Azerbaijani
+    "bak_Cyrl": "bak_Cyrl",  # Bashkir
+    "bam_Latn": "bam_Latn",  # Bambara
+    "ban_Latn": "ban_Latn",  # Balinese
+    "bel_Cyrl": "bel_Cyrl",  # Belarusian
+    "bem_Latn": "bem_Latn",  # Bemba
+    "ben_Beng": "ben_Beng",  # Bengali
+    "bho_Deva": "bho_Deva",  # Bhojpuri
+    "bjn_Arab": "bjn_Arab",  # Banjar (Arabic script)
+    "bjn_Latn": "bjn_Latn",  # Banjar (Latin script)
+    "bod_Tibt": "bod_Tibt",  # Standard Tibetan
+    "bos_Latn": "bos_Latn",  # Bosnian
+    "bug_Latn": "bug_Latn",  # Buginese
+    "bul_Cyrl": "bul_Cyrl",  # Bulgarian
+    "cat_Latn": "cat_Latn",  # Catalan
+    "ceb_Latn": "ceb_Latn",  # Cebuano
+    "ces_Latn": "ces_Latn",  # Czech
+    "cjk_Latn": "cjk_Latn",  # Chokwe
+    "ckb_Arab": "ckb_Arab",  # Central Kurdish
+    "crh_Latn": "crh_Latn",  # Crimean Tatar
+    "cym_Latn": "cym_Latn",  # Welsh
+    "dan_Latn": "dan_Latn",  # Danish
+    "deu_Latn": "deu_Latn",  # German
+    "dik_Latn": "dik_Latn",  # Southwestern Dinka
+    "dyu_Latn": "dyu_Latn",  # Dyula
+    "dzo_Tibt": "dzo_Tibt",  # Dzongkha
+    "ell_Grek": "ell_Grek",  # Greek
+    "eng_Latn": "eng_Latn",  # English
+    "epo_Latn": "epo_Latn",  # Esperanto
+    "est_Latn": "est_Latn",  # Estonian
+    "eus_Latn": "eus_Latn",  # Basque
+    "ewe_Latn": "ewe_Latn",  # Ewe
+    "fao_Latn": "fao_Latn",  # Faroese
+    "fij_Latn": "fij_Latn",  # Fijian
+    "fin_Latn": "fin_Latn",  # Finnish
+    "fon_Latn": "fon_Latn",  # Fon
+    "fra_Latn": "fra_Latn",  # French
+    "fur_Latn": "fur_Latn",  # Friulian
+    "fuv_Latn": "fuv_Latn",  # Nigerian Fulfulde
+    "gaz_Latn": "gaz_Latn",  # West Central Oromo
+    "gla_Latn": "gla_Latn",  # Scottish Gaelic
+    "gle_Latn": "gle_Latn",  # Irish
+    "glg_Latn": "glg_Latn",  # Galician
+    "grn_Latn": "grn_Latn",  # Guarani
+    "guj_Gujr": "guj_Gujr",  # Gujarati
+    "hat_Latn": "hat_Latn",  # Haitian Creole
+    "hau_Latn": "hau_Latn",  # Hausa
+    "heb_Hebr": "heb_Hebr",  # Hebrew
+    "hin_Deva": "hin_Deva",  # Hindi
+    "hne_Deva": "hne_Deva",  # Chhattisgarhi
+    "hrv_Latn": "hrv_Latn",  # Croatian
+    "hun_Latn": "hun_Latn",  # Hungarian
+    "hye_Armn": "hye_Armn",  # Armenian
+    "ibo_Latn": "ibo_Latn",  # Igbo
+    "ilo_Latn": "ilo_Latn",  # Ilocano
+    "ind_Latn": "ind_Latn",  # Indonesian
+    "isl_Latn": "isl_Latn",  # Icelandic
+    "ita_Latn": "ita_Latn",  # Italian
+    "jav_Latn": "jav_Latn",  # Javanese
+    "jpn_Jpan": "jpn_Jpan",  # Japanese
+    "kab_Latn": "kab_Latn",  # Kabyle
+    "kac_Latn": "kac_Latn",  # Jingpho
+    "kam_Latn": "kam_Latn",  # Kamba
+    "kan_Knda": "kan_Knda",  # Kannada
+    "kas_Arab": "kas_Arab",  # Kashmiri (Arabic script)
+    "kas_Deva": "kas_Deva",  # Kashmiri (Devanagari script)
+    "kat_Geor": "kat_Geor",  # Georgian
+    "kaz_Cyrl": "kaz_Cyrl",  # Kazakh
+    "kbp_Latn": "kbp_Latn",  # Kabiyè
+    "kea_Latn": "kea_Latn",  # Kabuverdianu
+    "khk_Cyrl": "khk_Cyrl",  # Halh Mongolian
+    "khm_Khmr": "khm_Khmr",  # Khmer
+    "kik_Latn": "kik_Latn",  # Kikuyu
+    "kin_Latn": "kin_Latn",  # Kinyarwanda
+    "kir_Cyrl": "kir_Cyrl",  # Kyrgyz
+    "kmb_Latn": "kmb_Latn",  # Kimbundu
+    "kmr_Latn": "kmr_Latn",  # Northern Kurdish
+    "knc_Arab": "knc_Arab",  # Central Kanuri (Arabic script)
+    "knc_Latn": "knc_Latn",  # Central Kanuri (Latin script)
+    "kon_Latn": "kon_Latn",  # Kikongo
+    "kor_Hang": "kor_Hang",  # Korean
+    "lao_Laoo": "lao_Laoo",  # Lao
+    "lij_Latn": "lij_Latn",  # Ligurian
+    "lim_Latn": "lim_Latn",  # Limburgish
+    "lin_Latn": "lin_Latn",  # Lingala
+    "lit_Latn": "lit_Latn",  # Lithuanian
+    "lmo_Latn": "lmo_Latn",  # Lombard
+    "ltg_Latn": "ltg_Latn",  # Latgalian
+    "ltz_Latn": "ltz_Latn",  # Luxembourgish
+    "lua_Latn": "lua_Latn",  # Luba-Kasai
+    "lug_Latn": "lug_Latn",  # Ganda
+    "luo_Latn": "luo_Latn",  # Luo
+    "lus_Latn": "lus_Latn",  # Mizo
+    "lvs_Latn": "lvs_Latn",  # Standard Latvian
+    "mag_Deva": "mag_Deva",  # Magahi
+    "mai_Deva": "mai_Deva",  # Maithili
+    "mal_Mlym": "mal_Mlym",  # Malayalam
+    "mar_Deva": "mar_Deva",  # Marathi
+    "min_Arab": "min_Arab",  # Minangkabau (Arabic script)
+    "min_Latn": "min_Latn",  # Minangkabau (Latin script)
+    "mkd_Cyrl": "mkd_Cyrl",  # Macedonian
+    "mlt_Latn": "mlt_Latn",  # Maltese
+    "mni_Beng": "mni_Beng",  # Meitei (Bengali script)
+    "mos_Latn": "mos_Latn",  # Mossi
+    "mri_Latn": "mri_Latn",  # Maori
+    "mya_Mymr": "mya_Mymr",  # Burmese
+    "nld_Latn": "nld_Latn",  # Dutch
+    "nno_Latn": "nno_Latn",  # Norwegian Nynorsk
+    "nob_Latn": "nob_Latn",  # Norwegian Bokmål
+    "npi_Deva": "npi_Deva",  # Nepali
+    "nso_Latn": "nso_Latn",  # Northern Sotho
+    "nus_Latn": "nus_Latn",  # Nuer
+    "nya_Latn": "nya_Latn",  # Nyanja
+    "oci_Latn": "oci_Latn",  # Occitan
+    "ory_Orya": "ory_Orya",  # Odia
+    "pag_Latn": "pag_Latn",  # Pangasinan
+    "pan_Guru": "pan_Guru",  # Eastern Panjabi
+    "pap_Latn": "pap_Latn",  # Papiamento
+    "pbt_Arab": "pbt_Arab",  # Southern Pashto
+    "pes_Arab": "pes_Arab",  # Western Persian
+    "plt_Latn": "plt_Latn",  # Plateau Malagasy
+    "pol_Latn": "pol_Latn",  # Polish
+    "por_Latn": "por_Latn",  # Portuguese
+    "prs_Arab": "prs_Arab",  # Dari
+    "quy_Latn": "quy_Latn",  # Ayacucho Quechua
+    "ron_Latn": "ron_Latn",  # Romanian
+    "run_Latn": "run_Latn",  # Rundi
+    "rus_Cyrl": "rus_Cyrl",  # Russian
+    "sag_Latn": "sag_Latn",  # Sango
+    "san_Deva": "san_Deva",  # Sanskrit
+    "sat_Olck": "sat_Olck",  # Santali
+    "scn_Latn": "scn_Latn",  # Sicilian
+    "shn_Mymr": "shn_Mymr",  # Shan
+    "sin_Sinh": "sin_Sinh",  # Sinhala
+    "slk_Latn": "slk_Latn",  # Slovak
+    "slv_Latn": "slv_Latn",  # Slovenian
+    "smo_Latn": "smo_Latn",  # Samoan
+    "sna_Latn": "sna_Latn",  # Shona
+    "snd_Arab": "snd_Arab",  # Sindhi
+    "som_Latn": "som_Latn",  # Somali
+    "sot_Latn": "sot_Latn",  # Southern Sotho
+    "spa_Latn": "spa_Latn",  # Spanish
+    "srd_Latn": "srd_Latn",  # Sardinian
+    "srp_Cyrl": "srp_Cyrl",  # Serbian
+    "ssw_Latn": "ssw_Latn",  # Swati
+    "sun_Latn": "sun_Latn",  # Sundanese
+    "swe_Latn": "swe_Latn",  # Swedish
+    "swh_Latn": "swh_Latn",  # Swahili
+    "szl_Latn": "szl_Latn",  # Silesian
+    "tam_Taml": "tam_Taml",  # Tamil
+    "taq_Latn": "taq_Latn",  # Tamasheq (Latin script)
+    "taq_Tfng": "taq_Tfng",  # Tamasheq (Tifinagh script)
+    "tat_Cyrl": "tat_Cyrl",  # Tatar
+    "tel_Telu": "tel_Telu",  # Telugu
+    "tgk_Cyrl": "tgk_Cyrl",  # Tajik
+    "tgl_Latn": "tgl_Latn",  # Tagalog
+    "tha_Thai": "tha_Thai",  # Thai
+    "tir_Ethi": "tir_Ethi",  # Tigrinya
+    "tpi_Latn": "tpi_Latn",  # Tok Pisin
+    "tsn_Latn": "tsn_Latn",  # Tswana
+    "tso_Latn": "tso_Latn",  # Tsonga
+    "tuk_Latn": "tuk_Latn",  # Turkmen
+    "tum_Latn": "tum_Latn",  # Tumbuka
+    "tur_Latn": "tur_Latn",  # Turkish
+    "twi_Latn": "twi_Latn",  # Twi
+    "tzm_Tfng": "tzm_Tfng",  # Central Atlas Tamazight
+    "uig_Arab": "uig_Arab",  # Uyghur
+    "ukr_Cyrl": "ukr_Cyrl",  # Ukrainian
+    "umb_Latn": "umb_Latn",  # Umbundu
+    "urd_Arab": "urd_Arab",  # Urdu
+    "uzn_Latn": "uzn_Latn",  # Northern Uzbek
+    "vec_Latn": "vec_Latn",  # Venetian
+    "vie_Latn": "vie_Latn",  # Vietnamese
+    "war_Latn": "war_Latn",  # Waray
+    "wol_Latn": "wol_Latn",  # Wolof
+    "xho_Latn": "xho_Latn",  # Xhosa
+    "ydd_Hebr": "ydd_Hebr",  # Eastern Yiddish
+    "yor_Latn": "yor_Latn",  # Yoruba
+    "yue_Hant": "yue_Hant",  # Yue Chinese
+    "zho_Hans": "zho_Hans",  # Chinese (Simplified)
+    "zho_Hant": "zho_Hant",  # Chinese (Traditional)
+    "zsm_Latn": "zsm_Latn",  # Standard Malay
+    "zul_Latn": "zul_Latn",  # Zulu
 }
 
 

@@ -218,10 +218,10 @@ def test_translate_request_enforces_text_length_limit() -> None:
         TranslateRequest(text="a" * (settings.request_text_max_length + 1), source_language="ar")
 
 
-def test_translate_request_requires_source_language() -> None:
-    """Перевіряє, що `source_language` є обов'язковим полем схеми."""
-    with pytest.raises(ValidationError):
-        TranslateRequest(text="مرحبا")
+def test_translate_request_source_language_defaults_to_none() -> None:
+    """Перевіряє, що `source_language` за замовчуванням None (автодетекція)."""
+    payload = TranslateRequest(text="مرحبا")
+    assert payload.source_language is None
 
 
 def test_supported_source_languages_include_ukraine_neighboring_countries() -> None:
@@ -233,3 +233,5 @@ def test_supported_source_languages_include_ukraine_neighboring_countries() -> N
 def test_resolve_source_language_alias() -> None:
     """Перевіряє перетворення source alias у NLLB-код."""
     assert resolve_source_language("pl") == "pol_Latn"
+    assert resolve_source_language("en") == "eng_Latn"
+    assert resolve_source_language("ar") == "arb_Arab"

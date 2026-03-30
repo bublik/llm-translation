@@ -237,6 +237,7 @@
             "type": "string",
             "enum": [
               "ar",
+              "en",
               "pl",
               "sk",
               "hu",
@@ -246,11 +247,11 @@
               "ru"
             ],
             "title": "Source Language",
-            "description": "Вхідна мова (alias): `ar`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`.",
+            "description": "Вхідна мова (alias): `ar`, `en`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`.",
             "examples": [
               "ar",
-              "pl",
-              "ro"
+              "en",
+              "pl"
             ]
           }
         },
