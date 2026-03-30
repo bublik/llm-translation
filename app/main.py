@@ -217,7 +217,7 @@ def resolve_source_language(source_language: str | None, text: str = "") -> str:
     """Визначає NLLB-код вхідної мови для поточного запиту.
 
     Args:
-        source_language: Alias вхідної мови, NLLB-код, `"auto"` або `None` для автодетекції.
+        source_language: Alias вхідної мови, NLLB-код, `auto` або `None` для автодетекції.
         text: Вхідний текст — використовується лише при автодетекції.
 
     Returns:
