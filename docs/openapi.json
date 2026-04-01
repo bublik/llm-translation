@@ -203,6 +203,14 @@
       },
       "TranslateRequest": {
         "properties": {
+          "format": {
+            "type": "string",
+            "enum": ["text", "html"],
+            "default": "text",
+            "title": "Format",
+            "description": "Формат вхідного тексту: `text` (звичайний) або `html` (HTML-розмітка — перекладаються лише текстові вузли, теги та атрибути зберігаються).",
+            "examples": ["text", "html"]
+          },
           "text": {
             "type": "string",
             "maxLength": 10000,

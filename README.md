@@ -28,6 +28,7 @@ docker compose up --build
 - після прогріву можна поставити `NLLB_TRANSFORMERS_OFFLINE=1` для офлайн-режиму.
 
 ![Скріншот](docs/translate-ui.png)
+![translation with html tags](docs/translate-with-html-tags.png)
 
 ## Swagger і OpenAPI
 

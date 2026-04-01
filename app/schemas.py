@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 
 from app.config import TEXT_MIN_LENGTH, settings
 
+TranslateFormat = Literal["text", "html"]
+
 
 class TranslateRequest(BaseModel):
     """Запит на переклад одного текстового фрагмента."""
@@ -28,6 +30,14 @@ class TranslateRequest(BaseModel):
             "`ar`, `en`, `pl`, `sk`, `hu`, `ro`, `md`, `be`, `ru`."
         ),
         examples=["auto", "ar", "arb_Arab", "pol_Latn"],
+    )
+    format: TranslateFormat = Field(
+        default="text",
+        description=(
+            "Формат вхідного тексту: `text` (звичайний, за замовчуванням) або `html` "
+            "(HTML-розмітка — перекладаються лише текстові вузли, теги та атрибути зберігаються)."
+        ),
+        examples=["text", "html"],
     )
 
 

@@ -1,10 +1,12 @@
 import json
 import logging
+import re
 import threading
 import time
 import uuid
 from collections import defaultdict, deque
-from typing import TYPE_CHECKING, Any
+from html.parser import HTMLParser
+from typing import TYPE_CHECKING, Any, Callable
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.responses import HTMLResponse
@@ -327,6 +329,95 @@ def get_model_device(translator: Any) -> str:
     return str(device)
 
 
+# ── HTML-переклад ────────────────────────────────────────────────────────────
+
+class _HTMLTextTranslator(HTMLParser):
+    """Обходить HTML і перекладає лише текстові вузли.
+
+    Теги, атрибути, коментарі та вміст <script>/<style>/<code>/<pre>
+    передаються до виводу без змін.
+    """
+
+    # Вміст цих тегів перекладати не потрібно
+    _NO_TRANSLATE: frozenset[str] = frozenset(
+        {"script", "style", "noscript", "code", "pre", "math", "svg"}
+    )
+
+    def __init__(self, translate_fn: Callable[[str], str]) -> None:
+        super().__init__(convert_charrefs=False)
+        self._fn = translate_fn
+        self._out: list[str] = []
+        self._skip_depth: int = 0
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+
+    def _serialize_attrs(self, attrs: list[tuple[str, str | None]]) -> str:
+        parts: list[str] = []
+        for name, value in attrs:
+            if value is None:
+                parts.append(f" {name}")
+            else:
+                parts.append(f' {name}="{value.replace(chr(34), "&quot;")}"')
+        return "".join(parts)
+
+    # ── HTMLParser callbacks ──────────────────────────────────────────────────
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self._NO_TRANSLATE:
+            self._skip_depth += 1
+        self._out.append(f"<{tag}{self._serialize_attrs(attrs)}>")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._NO_TRANSLATE and self._skip_depth:
+            self._skip_depth -= 1
+        self._out.append(f"</{tag}>")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Самозакриваючі теги (<br/>, <img/> тощо)."""
+        self._out.append(f"<{tag}{self._serialize_attrs(attrs)}/>")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth or not data.strip():
+            self._out.append(data)
+            return
+        stripped = data.strip()
+        leading  = data[: len(data) - len(data.lstrip())]
+        trailing = data[len(data.rstrip()) :]
+        try:
+            self._out.append(leading + self._fn(stripped) + trailing)
+        except Exception:
+            self._out.append(data)
+
+    def handle_comment(self, data: str) -> None:
+        self._out.append(f"<!--{data}-->")
+
+    def handle_entityref(self, name: str) -> None:
+        self._out.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self._out.append(f"&#{name};")
+
+    def handle_decl(self, decl: str) -> None:
+        self._out.append(f"<!{decl}>")
+
+    def result(self) -> str:
+        return "".join(self._out)
+
+
+def _translate_html(html_text: str, translate_fn: Callable[[str], str]) -> str:
+    """Перекладає текстові вузли HTML, зберігаючи теги та атрибути незмінними."""
+    parser = _HTMLTextTranslator(translate_fn)
+    parser.feed(html_text)
+    return parser.result()
+
+
+def _html_to_plain(html_text: str) -> str:
+    """Вилучає видимий текст із HTML (для автодетекції мови)."""
+    return re.sub(r"<[^>]+>", " ", html_text).strip()
+
+
+# ── HTML сторінка ─────────────────────────────────────────────────────────────
+
 _ROOT_HTML = """<!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -609,8 +700,17 @@ _ROOT_HTML = """<!DOCTYPE html>
       min-height: 180px;
     }
 
-    .translation.loading { color: var(--text-muted); font-style: italic; font-size: 15px; }
-    .translation.error   { color: #d93025; font-size: 14px; line-height: 1.5; }
+    .translation.loading   { color: var(--text-muted); font-style: italic; font-size: 15px; }
+    .translation.error     { color: #d93025; font-size: 14px; line-height: 1.5; }
+    .translation.html-out  {
+      font-family: 'Roboto Mono', 'Courier New', monospace;
+      font-size: 13px;
+      color: #37474f;
+      white-space: pre-wrap;
+      background: #f5f5f5;
+    }
+
+    .icon-btn.active { background: var(--blue-light); color: var(--blue); }
 
     /* ── Panel footers ────────────────────────────── */
     .panel-footer {
@@ -803,6 +903,7 @@ _ROOT_HTML = """<!DOCTYPE html>
         <div class="panel-footer">
           <span class="char-count" id="chars">0 / 10 000</span>
           <div class="row-btns">
+            <button class="icon-btn" id="html-btn" title="HTML-режим: перекладати текст, зберігати теги">&lt;/&gt;</button>
             <button class="icon-btn" id="clear-btn" title="Очистити">✕</button>
           </div>
         </div>
@@ -855,6 +956,18 @@ _ROOT_HTML = """<!DOCTYPE html>
   const clearBtn   = document.getElementById('clear-btn');
   const copyBtn    = document.getElementById('copy-btn');
   const swapBtn    = document.getElementById('swap-btn');
+  const htmlBtn    = document.getElementById('html-btn');
+
+  let htmlMode = false;
+
+  htmlBtn.addEventListener('click', () => {
+    htmlMode = !htmlMode;
+    htmlBtn.classList.toggle('active', htmlMode);
+    srcTextEl.placeholder = htmlMode ? '<p>Вставте HTML з тегами…</p>' : 'Введіть текст…';
+    tgtTextEl.classList.toggle('html-out', htmlMode);
+    lastText = '';
+    if (srcTextEl.value.trim()) scheduleTranslate();
+  });
   const verEl      = document.getElementById('ver');
   const epListEl   = document.getElementById('ep-list');
   const authToggle = document.getElementById('auth-toggle');
@@ -983,6 +1096,7 @@ _ROOT_HTML = """<!DOCTYPE html>
         text,
         target_language: tgt || null,
         source_language: (src === 'auto') ? null : src,
+        format: htmlMode ? 'html' : 'text',
       };
 
       const headers = { 'Content-Type': 'application/json' };
@@ -1011,7 +1125,7 @@ _ROOT_HTML = """<!DOCTYPE html>
 
       const data = await res.json();
       tgtTextEl.textContent = data.translation;
-      tgtTextEl.className = 'translation';
+      tgtTextEl.className = 'translation' + (htmlMode ? ' html-out' : '');
       detectedEl.textContent = (src === 'auto') ? '← ' + data.source_language : '';
       modelEl.textContent = data.model_name;
 
@@ -1036,7 +1150,7 @@ _ROOT_HTML = """<!DOCTYPE html>
 
   function resetTarget() {
     tgtTextEl.textContent = '';
-    tgtTextEl.className = 'translation';
+    tgtTextEl.className = 'translation' + (htmlMode ? ' html-out' : '');
     detectedEl.textContent = '';
     modelEl.textContent = '';
     lastText = ''; lastSrc = ''; lastTgt = '';
@@ -1212,16 +1326,28 @@ def translate(
     """
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     started_at = time.perf_counter()
-    resolved_source_language = resolve_source_language(payload.source_language, payload.text)
+    # Для HTML-режиму визначаємо мову за видимим текстом (без тегів)
+    detect_from = _html_to_plain(payload.text) if payload.format == "html" else payload.text
+    resolved_source_language = resolve_source_language(payload.source_language, detect_from)
     resolved_target_language = resolve_target_language(payload.target_language)
     device = get_model_device(translator)
     segments = 1
     try:
-        translated = translator.translate(
-            payload.text,
-            target_language=resolved_target_language,
-            source_language=resolved_source_language,
-        )
+        if payload.format == "html":
+            translated = _translate_html(
+                payload.text,
+                lambda text: translator.translate(
+                    text,
+                    target_language=resolved_target_language,
+                    source_language=resolved_source_language,
+                ),
+            )
+        else:
+            translated = translator.translate(
+                payload.text,
+                target_language=resolved_target_language,
+                source_language=resolved_source_language,
+            )
         latency_ms = round((time.perf_counter() - started_at) * 1000, 2)
         logger.info(
             json.dumps(
