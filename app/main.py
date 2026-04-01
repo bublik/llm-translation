@@ -7,6 +7,7 @@ from collections import defaultdict, deque
 from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
+from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from lingua import Language, LanguageDetectorBuilder
@@ -34,6 +35,9 @@ from app.config import (
     RATE_LIMIT_RESPONSE_DESCRIPTION,
     MODEL_UNAVAILABLE_DETAIL_PREFIX,
     MODEL_UNAVAILABLE_RESPONSE_DESCRIPTION,
+    ROOT_DESCRIPTION,
+    ROOT_ENDPOINT_PATH,
+    ROOT_SUMMARY,
     SUPPORTED_SOURCE_LANGUAGES,
     SUPPORTED_TARGET_LANGUAGES,
     TRANSLATE_DESCRIPTION,
@@ -321,6 +325,825 @@ def get_model_device(translator: Any) -> str:
     if device is None:
         return "unknown"
     return str(device)
+
+
+_ROOT_HTML = """<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NLLB-200 Перекладач</title>
+  <style>
+    :root {
+      --blue: #1a73e8;
+      --blue-hover: #1558b0;
+      --blue-light: #e8f0fe;
+      --border: #dadce0;
+      --bg: #f8f9fa;
+      --text: #202124;
+      --text-muted: #5f6368;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────── */
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo { font-size: 20px; font-weight: 600; color: var(--blue); }
+
+    .version {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg);
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .auth-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .auth-toggle:hover { border-color: var(--blue); color: var(--blue); }
+    .auth-toggle.open  { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+    .auth-toggle.saved { border-color: #34a853; color: #137333; }
+    .auth-toggle.saved:hover { background: #e6f4ea; }
+
+    .auth-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #34a853;
+      display: none;
+    }
+
+    .auth-toggle.saved .auth-dot { display: inline-block; }
+
+    /* ── Auth bar ─────────────────────────────────── */
+    .auth-bar {
+      background: #fffde7;
+      border-bottom: 1px solid #ffe082;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .25s ease, padding .25s ease;
+    }
+
+    .auth-bar.open {
+      max-height: 120px;
+      padding: 14px 24px;
+    }
+
+    .auth-bar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .auth-bar label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #5f4b00;
+      white-space: nowrap;
+    }
+
+    .auth-input {
+      flex: 1;
+      min-width: 180px;
+      max-width: 340px;
+      padding: 8px 12px;
+      border: 1px solid #ffe082;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'Roboto Mono', 'Courier New', monospace;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .auth-input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26,115,232,.15); }
+
+    .auth-save {
+      padding: 8px 16px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s;
+      white-space: nowrap;
+    }
+
+    .auth-save:hover { background: var(--blue-hover); }
+
+    .auth-forget {
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .auth-forget:hover { color: #d93025; border-color: #d93025; }
+
+    .auth-hint {
+      font-size: 12px;
+      color: #8d6e00;
+    }
+
+    /* ── Layout ───────────────────────────────────── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* ── Translator card ──────────────────────────── */
+    .translator {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    /* ── Language bar ─────────────────────────────── */
+    .lang-bar-row {
+      display: grid;
+      grid-template-columns: 1fr 52px 1fr;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .lang-bar {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      gap: 10px;
+      min-height: 52px;
+    }
+
+    .lang-bar.source { border-right: 1px solid var(--border); }
+    .lang-bar.target { border-left: 1px solid var(--border); }
+
+    .lang-bar select {
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      padding: 6px 4px;
+      border-radius: 4px;
+      max-width: 100%;
+    }
+
+    .lang-bar select:hover { background: var(--bg); }
+
+    .detected {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .swap-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 20px;
+      transition: color .15s, transform .2s;
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+    }
+
+    .swap-btn:hover { color: var(--blue); transform: rotate(180deg); }
+
+    /* ── Panels ───────────────────────────────────── */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 240px;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel.source { border-right: 1px solid var(--border); }
+
+    textarea {
+      flex: 1;
+      padding: 20px;
+      font-size: 18px;
+      line-height: 1.65;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+
+    textarea::placeholder { color: #bdc1c6; }
+
+    .translation {
+      flex: 1;
+      padding: 20px;
+      font-size: 18px;
+      line-height: 1.65;
+      background: #f8f9fa;
+      color: var(--blue);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      min-height: 180px;
+    }
+
+    .translation.loading { color: var(--text-muted); font-style: italic; font-size: 15px; }
+    .translation.error   { color: #d93025; font-size: 14px; line-height: 1.5; }
+
+    /* ── Panel footers ────────────────────────────── */
+    .panel-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      min-height: 46px;
+      background: #fff;
+    }
+
+    .panel.target .panel-footer { background: #f8f9fa; }
+
+    .char-count { font-size: 13px; color: var(--text-muted); }
+    .char-count.over { color: #d93025; }
+
+    .model-name { font-size: 12px; color: var(--text-muted); }
+
+    .row-btns { display: flex; gap: 2px; }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 7px 9px;
+      border-radius: 50%;
+      font-size: 15px;
+      line-height: 1;
+      transition: background .15s, color .15s;
+      user-select: none;
+    }
+
+    .icon-btn:hover { background: #ebebeb; color: var(--text); }
+
+    /* ── Docs section ─────────────────────────────── */
+    .docs {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 32px;
+    }
+
+    .docs h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .doc-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .doc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      color: var(--text);
+      transition: all .15s;
+    }
+
+    .doc-link:hover { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+
+    .doc-link.primary {
+      background: var(--blue); color: #fff; border-color: var(--blue);
+    }
+
+    .doc-link.primary:hover { background: var(--blue-hover); }
+
+    .docs h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    .ep-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .ep-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .method {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .GET  { background: #e6f4ea; color: #137333; }
+    .POST { background: #fce8e6; color: #c5221f; }
+
+    .ep-body .path {
+      font-family: 'Roboto Mono', 'Courier New', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .ep-body .desc { font-size: 13px; color: var(--text-muted); }
+
+    .auth-chip {
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 10px;
+      background: #fef7e0;
+      color: #b06000;
+      border: 1px solid #fdd663;
+      white-space: nowrap;
+    }
+
+    /* ── Responsive ───────────────────────────────── */
+    @media (max-width: 720px) {
+      .panels { grid-template-columns: 1fr; }
+      .panel.source { border-right: none; border-bottom: 1px solid var(--border); }
+      .lang-bar-row { grid-template-columns: 1fr 44px 1fr; }
+      .docs { padding: 20px; }
+      .ep-card { grid-template-columns: 48px 1fr; }
+      .auth-chip { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">NLLB-200 Перекладач</span>
+  <span class="version" id="ver">v…</span>
+  <div class="header-right">
+    <button class="auth-toggle" id="auth-toggle" title="Налаштування авторизації">
+      🔑 API ключ
+      <span class="auth-dot"></span>
+    </button>
+  </div>
+</header>
+
+<div class="auth-bar" id="auth-bar">
+  <div class="auth-bar-inner">
+    <label for="auth-input">Токен / API ключ:</label>
+    <input type="password" class="auth-input" id="auth-input"
+           placeholder="Введіть ваш API ключ або Bearer-токен…" autocomplete="off">
+    <button class="auth-save" id="auth-save">Зберегти</button>
+    <button class="auth-forget" id="auth-forget">Видалити</button>
+    <span class="auth-hint">Зберігається в localStorage браузера.</span>
+  </div>
+</div>
+
+<main>
+
+  <!-- ── Translator ── -->
+  <div class="translator">
+
+    <div class="lang-bar-row">
+      <div class="lang-bar source">
+        <select id="src-lang">
+          <option value="auto">Визначити автоматично</option>
+        </select>
+        <span class="detected" id="detected"></span>
+      </div>
+
+      <button class="swap-btn" id="swap-btn" title="Поміняти мови місцями">⇄</button>
+
+      <div class="lang-bar target">
+        <select id="tgt-lang"></select>
+      </div>
+    </div>
+
+    <div class="panels">
+      <div class="panel source">
+        <textarea id="src-text" placeholder="Введіть текст…" maxlength="10000" spellcheck="false" autocomplete="off"></textarea>
+        <div class="panel-footer">
+          <span class="char-count" id="chars">0 / 10 000</span>
+          <div class="row-btns">
+            <button class="icon-btn" id="clear-btn" title="Очистити">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel target">
+        <div class="translation" id="tgt-text"></div>
+        <div class="panel-footer">
+          <span class="model-name" id="model-name"></span>
+          <div class="row-btns">
+            <button class="icon-btn" id="copy-btn" title="Копіювати переклад">⎘</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Docs ── -->
+  <div class="docs">
+    <h2>Документація API</h2>
+
+    <div class="doc-links">
+      <a class="doc-link primary" href="/docs">⚡ Swagger UI</a>
+      <a class="doc-link" href="/redoc">📖 ReDoc</a>
+      <a class="doc-link" href="/openapi.json" target="_blank">{ } OpenAPI JSON</a>
+      <a class="doc-link" href="/languages" target="_blank">🌐 Список мов</a>
+    </div>
+
+    <h3>Доступні ендпоінти</h3>
+    <div class="ep-list" id="ep-list"></div>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const MAX = 10000;
+  const DEBOUNCE = 600;
+
+  const srcLangEl  = document.getElementById('src-lang');
+  const tgtLangEl  = document.getElementById('tgt-lang');
+  const srcTextEl  = document.getElementById('src-text');
+  const tgtTextEl  = document.getElementById('tgt-text');
+  const charsEl    = document.getElementById('chars');
+  const detectedEl = document.getElementById('detected');
+  const modelEl    = document.getElementById('model-name');
+  const clearBtn   = document.getElementById('clear-btn');
+  const copyBtn    = document.getElementById('copy-btn');
+  const swapBtn    = document.getElementById('swap-btn');
+  const verEl      = document.getElementById('ver');
+  const epListEl   = document.getElementById('ep-list');
+  const authToggle = document.getElementById('auth-toggle');
+  const authBar    = document.getElementById('auth-bar');
+  const authInput  = document.getElementById('auth-input');
+  const authSave   = document.getElementById('auth-save');
+  const authForget = document.getElementById('auth-forget');
+
+  // ── Auth state ───────────────────────────────────
+  const AUTH_REQUIRED = __AUTH_REQUIRED__;
+  const LS_KEY = 'nllb_token';
+  let token = localStorage.getItem(LS_KEY) || '';
+
+  function authUISync() {
+    authToggle.classList.toggle('saved', !!token);
+    if (token) authInput.value = token;
+  }
+
+  function openAuthBar() {
+    authBar.classList.add('open');
+    authToggle.classList.add('open');
+    authToggle.classList.remove('saved');
+    setTimeout(() => authInput.focus(), 50);
+  }
+
+  function closeAuthBar() {
+    authBar.classList.remove('open');
+    authToggle.classList.remove('open');
+    authUISync();
+  }
+
+  authToggle.addEventListener('click', () => {
+    authBar.classList.contains('open') ? closeAuthBar() : openAuthBar();
+  });
+
+  authSave.addEventListener('click', () => {
+    token = authInput.value.trim();
+    if (token) localStorage.setItem(LS_KEY, token);
+    else localStorage.removeItem(LS_KEY);
+    closeAuthBar();
+    lastText = '';       // примусово перекласти ще раз
+    scheduleTranslate();
+  });
+
+  authInput.addEventListener('keydown', e => { if (e.key === 'Enter') authSave.click(); });
+
+  authForget.addEventListener('click', () => {
+    token = '';
+    authInput.value = '';
+    localStorage.removeItem(LS_KEY);
+    authUISync();
+  });
+
+  let timer = null;
+  let lastText = '', lastSrc = '', lastTgt = '';
+
+  // ── Відомі назви мов ────────────────────────────
+  const NAMES = {
+    ar: 'Арабська',   en: 'Англійська', pl: 'Польська',
+    sk: 'Словацька',  hu: 'Угорська',   ro: 'Румунська',
+    md: 'Молдовська', be: 'Білоруська', ru: 'Російська',
+    uk: 'Українська',
+  };
+
+  function langLabel(code) {
+    return NAMES[code] ? NAMES[code] + ' (' + code + ')' : code;
+  }
+
+  // ── Завантаження мов ────────────────────────────
+  async function loadLanguages() {
+    try {
+      const res  = await fetch('/languages');
+      const data = await res.json();
+
+      verEl.textContent = 'v' + (data.version || '0.3.0');
+
+      // Джерельні мови: спочатку короткі alias-и, потім NLLB-коди
+      const shortAliases = ['ar','en','pl','sk','hu','ro','md','be','ru'];
+      const allSrc = Object.keys(data.source_languages);
+      const nllbCodes = allSrc.filter(k => !shortAliases.includes(k)).sort();
+
+      const grpCommon = document.createElement('optgroup');
+      grpCommon.label = 'Поширені мови';
+      shortAliases.filter(a => data.source_languages[a]).forEach(a => {
+        const o = new Option(langLabel(a), a);
+        grpCommon.appendChild(o);
+      });
+      srcLangEl.appendChild(grpCommon);
+
+      const grpNllb = document.createElement('optgroup');
+      grpNllb.label = 'NLLB-200 коди (' + nllbCodes.length + ')';
+      nllbCodes.forEach(code => {
+        grpNllb.appendChild(new Option(code, code));
+      });
+      srcLangEl.appendChild(grpNllb);
+
+      // Цільові мови
+      Object.keys(data.target_languages).forEach(alias => {
+        tgtLangEl.appendChild(new Option(langLabel(alias), alias));
+      });
+      if (data.default_target_language) {
+        tgtLangEl.value = data.default_target_language;
+      }
+
+    } catch (e) {
+      console.error('Не вдалося завантажити список мов:', e);
+    }
+  }
+
+  // ── Переклад ────────────────────────────────────
+  async function translate() {
+    const text = srcTextEl.value.trim();
+    const src  = srcLangEl.value;
+    const tgt  = tgtLangEl.value;
+
+    if (!text) {
+      resetTarget();
+      return;
+    }
+    if (text === lastText && src === lastSrc && tgt === lastTgt) return;
+
+    setLoading();
+
+    try {
+      const body = {
+        text,
+        target_language: tgt || null,
+        source_language: (src === 'auto') ? null : src,
+      };
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['X-API-Key'] = token;
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+
+      const res = await fetch('/translate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (res.status === 401) {
+        setError('Помилка 401: невалідний або відсутній токен. Введіть ключ у полі вище.');
+        openAuthBar();
+        return;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        setError('Помилка ' + res.status + ': ' + (err.detail || res.statusText));
+        return;
+      }
+
+      const data = await res.json();
+      tgtTextEl.textContent = data.translation;
+      tgtTextEl.className = 'translation';
+      detectedEl.textContent = (src === 'auto') ? '← ' + data.source_language : '';
+      modelEl.textContent = data.model_name;
+
+      lastText = text; lastSrc = src; lastTgt = tgt;
+
+    } catch (e) {
+      setError("Помилка з'єднання з сервером.");
+    }
+  }
+
+  function setLoading() {
+    tgtTextEl.textContent = 'Перекладаю…';
+    tgtTextEl.className = 'translation loading';
+    modelEl.textContent = '';
+  }
+
+  function setError(msg) {
+    tgtTextEl.textContent = msg;
+    tgtTextEl.className = 'translation error';
+    modelEl.textContent = '';
+  }
+
+  function resetTarget() {
+    tgtTextEl.textContent = '';
+    tgtTextEl.className = 'translation';
+    detectedEl.textContent = '';
+    modelEl.textContent = '';
+    lastText = ''; lastSrc = ''; lastTgt = '';
+  }
+
+  function scheduleTranslate() {
+    clearTimeout(timer);
+    timer = setTimeout(translate, DEBOUNCE);
+  }
+
+  // ── Лічильник символів ──────────────────────────
+  function updateChars() {
+    const n = srcTextEl.value.length;
+    charsEl.textContent = n.toLocaleString('uk') + ' / 10\u202F000';
+    charsEl.classList.toggle('over', n >= MAX);
+  }
+
+  // ── Swap ─────────────────────────────────────────
+  swapBtn.addEventListener('click', () => {
+    const tgtText = tgtTextEl.textContent;
+    const tgtClass = tgtTextEl.className;
+    if (!tgtText || tgtClass.includes('loading') || tgtClass.includes('error')) return;
+
+    srcTextEl.value = tgtText;
+
+    // Намагаємося встановити мову джерела = поточна цільова
+    const tgtVal = tgtLangEl.value;
+    const srcOpts = Array.from(srcLangEl.options).map(o => o.value);
+    if (srcOpts.includes(tgtVal)) srcLangEl.value = tgtVal;
+    else srcLangEl.value = 'auto';
+
+    updateChars();
+    lastText = '';
+    scheduleTranslate();
+  });
+
+  // ── Очистити ────────────────────────────────────
+  clearBtn.addEventListener('click', () => {
+    srcTextEl.value = '';
+    updateChars();
+    resetTarget();
+    srcTextEl.focus();
+  });
+
+  // ── Копіювати ───────────────────────────────────
+  copyBtn.addEventListener('click', async () => {
+    const text = tgtTextEl.textContent;
+    if (!text || tgtTextEl.className.includes('error')) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = '✓';
+      setTimeout(() => { copyBtn.textContent = '⎘'; }, 1600);
+    } catch (_) {}
+  });
+
+  srcTextEl.addEventListener('input', () => { updateChars(); scheduleTranslate(); });
+  srcLangEl.addEventListener('change', scheduleTranslate);
+  tgtLangEl.addEventListener('change', scheduleTranslate);
+
+  // ── Список ендпоінтів ───────────────────────────
+  const ENDPOINTS = [
+    { method:'GET',  path:'/',           summary:'Інтерфейс перекладача',  desc:'Ця сторінка — інтерактивний UI для перекладу тексту.',                           auth: false },
+    { method:'GET',  path:'/health',     summary:'Перевірка доступності',  desc:'Повертає <code>{"status":"ok"}</code> — liveness-check сервісу.',                auth: false },
+    { method:'GET',  path:'/languages',  summary:'Підтримувані мови',      desc:'Повертає мап alias → NLLB-код для вхідних і цільових мов.',                      auth: false },
+    { method:'POST', path:'/translate',  summary:'Переклад тексту',        desc:'Перекладає текст у вибрану цільову мову (ru/uk). Підтримує автодетекцію мови.',  auth: true  },
+    { method:'GET',  path:'/docs',       summary:'Swagger UI',              desc:'Інтерактивна документація OpenAPI у форматі Swagger.',                           auth: false },
+    { method:'GET',  path:'/redoc',      summary:'ReDoc',                   desc:'Альтернативна документація OpenAPI.',                                             auth: false },
+  ];
+
+  ENDPOINTS.forEach(ep => {
+    const card = document.createElement('div');
+    card.className = 'ep-card';
+    card.innerHTML =
+      '<span class="method ' + ep.method + '">' + ep.method + '</span>' +
+      '<div class="ep-body">' +
+        '<div class="path">' + ep.path + '</div>' +
+        '<div class="desc"><strong>' + ep.summary + '</strong> — ' + ep.desc + '</div>' +
+      '</div>' +
+      (ep.auth ? '<span class="auth-chip">🔒 auth</span>' : '<span></span>');
+    epListEl.appendChild(card);
+  });
+
+  // ── Старт ────────────────────────────────────────
+  authUISync();
+  if (AUTH_REQUIRED && !token) openAuthBar();
+  loadLanguages();
+  srcTextEl.focus();
+})();
+</script>
+
+</body>
+</html>"""
+
+
+@app.get(
+    ROOT_ENDPOINT_PATH,
+    tags=["system"],
+    summary=ROOT_SUMMARY,
+    description=ROOT_DESCRIPTION,
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def root() -> HTMLResponse:
+    """Повертає інтерактивний веб-інтерфейс перекладача."""
+    auth_required = settings.api_key_enabled or settings.bearer_token_enabled
+    html = _ROOT_HTML.replace("__AUTH_REQUIRED__", "true" if auth_required else "false")
+    return HTMLResponse(content=html)
 
 
 @app.get(

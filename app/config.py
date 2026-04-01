@@ -38,6 +38,9 @@ TRANSLATE_DESCRIPTION = (
 )
 LANGUAGES_SUMMARY = "Підтримувані мови"
 LANGUAGES_DESCRIPTION = "Повертає підтримувані alias-и і відповідні NLLB-коди."
+ROOT_ENDPOINT_PATH = "/"
+ROOT_SUMMARY = "Опис API"
+ROOT_DESCRIPTION = "Повертає JSON-опис сервісу та посилання на документацію Swagger UI."
 TEXT_MIN_LENGTH = 1
 
 SUPPORTED_TARGET_LANGUAGES = {

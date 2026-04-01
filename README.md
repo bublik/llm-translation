@@ -27,6 +27,8 @@ docker compose up --build
 - перший запуск зробіть з `NLLB_TRANSFORMERS_OFFLINE=0` для кешування моделі;
 - після прогріву можна поставити `NLLB_TRANSFORMERS_OFFLINE=1` для офлайн-режиму.
 
+![Скріншот](docs/translate-ui.png)
+
 ## Swagger і OpenAPI
 
 - Swagger UI: `http://localhost:8000/docs`
