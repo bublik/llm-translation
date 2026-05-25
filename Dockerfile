@@ -7,13 +7,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    patchelf \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt && \
+    find /usr/local/lib -name "libctranslate2*.so*" \
+      -exec patchelf --clear-execstack {} \;
 
 COPY app ./app
+COPY scripts ./scripts
 COPY .env.example ./.env.example
 
 EXPOSE 8000

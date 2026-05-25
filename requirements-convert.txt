@@ -1,0 +1,7 @@
+# Залежності для одноразової конвертації HuggingFace моделі → CTranslate2 INT8.
+# Запускати окремо: pip install -r requirements-convert.txt
+# Після конвертації для роботи сервісу достатньо requirements.txt (torch не потрібен).
+torch==2.8.0
+ctranslate2==4.5.0
+transformers==4.56.2
+sentencepiece==0.2.0

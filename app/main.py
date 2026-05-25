@@ -234,8 +234,11 @@ def resolve_source_language(source_language: str | None, text: str = "") -> str:
     """
     if source_language is None or source_language.strip().lower() == "auto":
         return _detect_language(text)
-    alias = source_language.strip().lower()
-    resolved_language = SUPPORTED_SOURCE_LANGUAGES.get(alias)
+    stripped = source_language.strip()
+    # Спочатку точне співпадіння (для NLLB-кодів типу ukr_Cyrl),
+    # потім lowercase (для коротких alias-ів типу AR → ar).
+    resolved_language = SUPPORTED_SOURCE_LANGUAGES.get(stripped) or SUPPORTED_SOURCE_LANGUAGES.get(stripped.lower())
+    alias = stripped
     if resolved_language is None:
         supported = ", ".join(sorted(SUPPORTED_SOURCE_LANGUAGES.keys()))
         raise HTTPException(
@@ -321,9 +324,9 @@ def require_rate_limit(request: Request) -> None:
 
 
 def get_model_device(translator: Any) -> str:
-    """Повертає device моделі перекладу, якщо доступно."""
-    model = getattr(translator, "_model", None)
-    device = getattr(model, "device", None)
+    """Повертає device CTranslate2-транслятора, якщо доступно."""
+    ct2 = getattr(translator, "_ct2", None)
+    device = getattr(ct2, "device", None)
     if device is None:
         return "unknown"
     return str(device)

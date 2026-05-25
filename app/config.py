@@ -269,7 +269,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="NLLB_", env_file=".env", extra="ignore")
 
-    model_name: str = "facebook/nllb-200-distilled-600M"
+    model_name: str = "facebook/nllb-200-distilled-1.3B"
     tgt_lang: str = "rus_Cyrl"
     default_target_language: str = "ru"
     api_key_enabled: bool = False
@@ -283,6 +283,9 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = False
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60
+    ct2_model_dir: str = "/app/storage/ct2-nllb-1.3b-int8"
+    ct2_device: str = "cpu"
+    ct2_inter_threads: int = 1
 
     @field_validator("default_target_language")
     @classmethod
@@ -418,6 +421,23 @@ class Settings(BaseSettings):
         """Перевіряє тривалість вікна rate limit у секундах."""
         if value < 1:
             raise ValueError("NLLB_RATE_LIMIT_WINDOW_SECONDS must be greater than or equal to 1.")
+        return value
+
+    @field_validator("ct2_device")
+    @classmethod
+    def validate_ct2_device(cls, value: str) -> str:
+        """Перевіряє допустимий пристрій для CTranslate2."""
+        normalized = value.strip().lower()
+        if normalized not in {"cpu", "cuda"}:
+            raise ValueError("NLLB_CT2_DEVICE must be 'cpu' or 'cuda'.")
+        return normalized
+
+    @field_validator("ct2_inter_threads")
+    @classmethod
+    def validate_ct2_inter_threads(cls, value: int) -> int:
+        """Перевіряє кількість паралельних потоків для CTranslate2."""
+        if value < 1:
+            raise ValueError("NLLB_CT2_INTER_THREADS must be greater than or equal to 1.")
         return value
 
 

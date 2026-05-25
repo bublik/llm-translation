@@ -8,11 +8,17 @@ services:
       - .env
     environment:
       HF_HOME: /app/storage/huggingface
-      TRANSFORMERS_CACHE: /app/storage/huggingface
       HF_HUB_CACHE: /app/storage/huggingface
+      TRANSFORMERS_VERBOSITY: error
       TRANSFORMERS_OFFLINE: ${NLLB_TRANSFORMERS_OFFLINE:-0}
+      NLLB_CT2_MODEL_DIR: /app/storage/ct2-nllb-1.3b-int8
+      NLLB_MODEL_CACHE_DIR: /app/storage/huggingface
+      NLLB_CT2_DEVICE: ${NLLB_CT2_DEVICE:-cpu}
+      NLLB_CT2_INTER_THREADS: ${NLLB_CT2_INTER_THREADS:-1}
     volumes:
       - ${STORAGE_PATH}:/app/storage
+    security_opt:
+      - seccomp:unconfined
     networks:
       - shared_net
     restart: unless-stopped
