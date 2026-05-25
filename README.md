@@ -1,6 +1,24 @@
 # NLLB-200 Translation service
 
-Стартовий каркас API-сервісу перекладу у підтримувані цільові мови на базі `facebook/nllb-200-distilled-600M`.
+API-сервіс перекладу у підтримувані цільові мови на базі `facebook/nllb-200-distilled-1.3B` через CTranslate2 (INT8).
+
+## Підготовка: конвертація моделі
+
+Перед першим запуском потрібно конвертувати HuggingFace модель у формат CTranslate2 INT8.
+Це робиться один раз:
+
+```bash
+python3 -m venv .venv-convert
+source .venv-convert/bin/activate
+pip install -r requirements-convert.txt
+
+python scripts/convert_model.py \
+  --model facebook/nllb-200-distilled-1.3B \
+  --output /path/to/storage/ct2-nllb-1.3b-int8 \
+  --quantization int8
+```
+
+Після конвертації встановіть `NLLB_CT2_MODEL_DIR` на шлях до директорії з моделлю.
 
 ## Локальний запуск (venv)
 
@@ -114,15 +132,18 @@ curl -X POST http://localhost:8000/translate \
 - `uk` -> `ukr_Cyrl`
 
 Параметр `target_language` у запиті опційний. Якщо не переданий, сервіс використовує дефолт із `NLLB_DEFAULT_TARGET_LANGUAGE`.
-Параметр `source_language` у запиті обов'язковий.
+Параметр `source_language` у запиті опційний. Якщо не переданий, сервіс автоматично визначає мову вхідного тексту.
 
 Повний список мов які можна підключити
-https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/README.md
+https://huggingface.co/facebook/nllb-200-distilled-1.3B/blob/main/README.md
 
 ## Налаштування
 
 Через env (`.env`):
-- `NLLB_MODEL_NAME` (default: `facebook/nllb-200-distilled-600M`)
+- `NLLB_MODEL_NAME` (default: `facebook/nllb-200-distilled-1.3B`)
+- `NLLB_CT2_MODEL_DIR` (default: `/app/storage/ct2-nllb-1.3b-int8`, шлях до конвертованої CTranslate2 моделі)
+- `NLLB_CT2_DEVICE` (default: `cpu`, допустимі: `cpu`, `cuda`)
+- `NLLB_CT2_INTER_THREADS` (default: `1`, кількість потоків CTranslate2 інференсу)
 - `NLLB_DEFAULT_TARGET_LANGUAGE` (default: `ru`, підтримувані: `ru`, `uk`)
 - `NLLB_API_KEY_ENABLED` (default: `false`, допустимі: `true|false`)
 - `NLLB_API_KEY` (default: `change-me`, обов'язковий якщо `NLLB_API_KEY_ENABLED=true`)
@@ -131,7 +152,7 @@ https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/README.md
 - `NLLB_RATE_LIMIT_ENABLED` (default: `false`, вмикає rate limit для `/translate`)
 - `NLLB_RATE_LIMIT_REQUESTS` (default: `60`, кількість запитів у вікні)
 - `NLLB_RATE_LIMIT_WINDOW_SECONDS` (default: `60`, розмір вікна rate limit у секундах)
-- `NLLB_MODEL_CACHE_DIR` (default: `/app/storage/huggingface`, локальний кеш model/tokenizer)
+- `NLLB_MODEL_CACHE_DIR` (default: `/app/storage/huggingface`, локальний кеш токенайзера)
 - `NLLB_TRANSFORMERS_OFFLINE` (default: `0`, `1` вмикає офлайн-режим HuggingFace)
 - `NLLB_MAX_LENGTH` (default: `1024`; `0` = без обмеження довжини генерації; `1024` ~= до однієї сторінки друкованого тексту)
 - `NLLB_REQUEST_TEXT_MAX_LENGTH` (default: `10000`, верхня межа довжини поля `text` у запиті `/translate`)

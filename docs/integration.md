@@ -73,7 +73,7 @@ Request body:
 Параметри:
 
 - `text` (required): текст для перекладу, довжина `1..NLLB_REQUEST_TEXT_MAX_LENGTH` (дефолт: `10000`)
-- `source_language` (required): alias вхідної мови
+- `source_language` (optional): alias вхідної мови; якщо не передано — мова визначається автоматично
 - `target_language` (optional): alias цільової мови
   - `ru` -> `rus_Cyrl`
   - `uk` -> `ukr_Cyrl`
@@ -101,7 +101,7 @@ Response `200`:
   "translation": "Привіт, як справи?",
   "source_language": "arb_Arab",
   "target_language": "ukr_Cyrl",
-  "model_name": "facebook/nllb-200-distilled-600M"
+  "model_name": "facebook/nllb-200-distilled-1.3B"
 }
 ```
 
