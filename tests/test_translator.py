@@ -271,9 +271,10 @@ def test_settings_reject_invalid_ct2_inter_threads() -> None:
 
 
 def test_settings_model_name_default_is_1_3b() -> None:
-    """Code-default для model_name вказує на модель 1.3B."""
+    """Code-default для model_name вказує на не-дистильовану модель 1.3B."""
     default = Settings.model_fields["model_name"].default
     assert "1.3B" in default
+    assert "distilled" not in default
 
 
 # ── Тести: TranslateRequest / resolve_source_language ────────────────────────

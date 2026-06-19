@@ -269,7 +269,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="NLLB_", env_file=".env", extra="ignore")
 
-    model_name: str = "facebook/nllb-200-distilled-1.3B"
+    model_name: str = "facebook/nllb-200-1.3B"
     tgt_lang: str = "rus_Cyrl"
     default_target_language: str = "ru"
     api_key_enabled: bool = False
@@ -283,7 +283,7 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = False
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60
-    ct2_model_dir: str = "/app/storage/ct2-nllb-1.3b-int8"
+    ct2_model_dir: str = "/app/storage/ct2-nllb-1.3b-nondistilled-int8"
     ct2_device: str = "cpu"
     ct2_inter_threads: int = 1
 
