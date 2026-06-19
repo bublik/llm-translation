@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### Changed (`aab4ab6`)
+- Перехід з `facebook/nllb-200-distilled-1.3B` на **`facebook/nllb-200-1.3B`** (не-дистильована модель):
+  - Краща обробка multi-sentence текстів — менше обрізань другого/третього речення
+  - Latency без змін (~400 ms на CPU)
+  - CT2 директорія: `ct2-nllb-1.3b-nondistilled-int8`
+- Додано скрипт `scripts/benchmark_models.py` для порівняння двох CT2-моделей NLLB пліч-о-пліч
+
 ### Added (`f991b2a`)
 - Міграція з HuggingFace Transformers + PyTorch на **CTranslate2 + NLLB-200 1.3B INT8**:
   - Docker-образ зменшено з ~1.8 GB до 247 MB (PyTorch видалено з runtime)
@@ -52,6 +59,7 @@
 
 ## Історія Комітів (коротко)
 
+- `aab4ab6` Перейти на NLLB-200 1.3B non-distilled + додати benchmark-скрипт
 - `f991b2a` Migrate to CTranslate2 + NLLB-200 1.3B INT8
 - `09e3693` Додати підтримку перекладу HTML-сторінок
 - `9cc42e2` Додати UI для перевірки сервісу та Swagger-документацію

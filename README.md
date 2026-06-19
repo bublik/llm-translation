@@ -1,6 +1,6 @@
 # NLLB-200 Translation service
 
-API-сервіс перекладу у підтримувані цільові мови на базі `facebook/nllb-200-distilled-1.3B` через CTranslate2 (INT8).
+API-сервіс перекладу у підтримувані цільові мови на базі `facebook/nllb-200-1.3B` через CTranslate2 (INT8).
 
 ## Підготовка: конвертація моделі
 
@@ -13,8 +13,8 @@ source .venv-convert/bin/activate
 pip install -r requirements-convert.txt
 
 python scripts/convert_model.py \
-  --model facebook/nllb-200-distilled-1.3B \
-  --output /path/to/storage/ct2-nllb-1.3b-int8 \
+  --model facebook/nllb-200-1.3B \
+  --output /path/to/storage/ct2-nllb-1.3b-nondistilled-int8 \
   --quantization int8
 ```
 
@@ -135,13 +135,13 @@ curl -X POST http://localhost:8000/translate \
 Параметр `source_language` у запиті опційний. Якщо не переданий, сервіс автоматично визначає мову вхідного тексту.
 
 Повний список мов які можна підключити
-https://huggingface.co/facebook/nllb-200-distilled-1.3B/blob/main/README.md
+chttps://huggingface.co/facebook/nllb-200-1.3B/blob/main/README.md
 
 ## Налаштування
 
 Через env (`.env`):
-- `NLLB_MODEL_NAME` (default: `facebook/nllb-200-distilled-1.3B`)
-- `NLLB_CT2_MODEL_DIR` (default: `/app/storage/ct2-nllb-1.3b-int8`, шлях до конвертованої CTranslate2 моделі)
+- `NLLB_MODEL_NAME` (default: `facebook/nllb-200-1.3B`)
+- `NLLB_CT2_MODEL_DIR` (default: `/app/storage/ct2-nllb-1.3b-nondistilled-int8`, шлях до конвертованої CTranslate2 моделі)
 - `NLLB_CT2_DEVICE` (default: `cpu`, допустимі: `cpu`, `cuda`)
 - `NLLB_CT2_INTER_THREADS` (default: `1`, кількість потоків CTranslate2 інференсу)
 - `NLLB_DEFAULT_TARGET_LANGUAGE` (default: `ru`, підтримувані: `ru`, `uk`)
