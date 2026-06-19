@@ -45,6 +45,105 @@ docker compose up --build
 - перший запуск зробіть з `NLLB_TRANSFORMERS_OFFLINE=0` для кешування моделі;
 - після прогріву можна поставити `NLLB_TRANSFORMERS_OFFLINE=1` для офлайн-режиму.
 
+## Деплоймент на сервер
+
+### Вимоги
+
+| Ресурс | Мінімум | Рекомендовано |
+|--------|---------|---------------|
+| RAM | 4 GB | 8 GB |
+| CPU | 2 ядра | 4+ ядра |
+| Диск | 10 GB | 20 GB |
+| OS | Ubuntu 22.04+ / Debian 12+ | — |
+| Docker | 24+ | — |
+| Docker Compose | v2 | — |
+
+### Перша установка
+
+**1. Клонувати репозиторій та налаштувати оточення:**
+
+```bash
+git clone <repo-url> /opt/speech-translate-service
+cd /opt/speech-translate-service
+cp .env.example .env
+```
+
+Відредагувати `.env` — виставити секрети та потрібні параметри (мінімум `NLLB_BEARER_TOKEN` або `NLLB_API_KEY`).
+
+**2. Підготувати директорію для моделі:**
+
+```bash
+mkdir -p /opt/storage/ct2-nllb-1.3b-nondistilled-int8
+echo 'STORAGE_PATH=/opt/storage' >> .env
+```
+
+**3. Сконвертувати модель (один раз, потрібен інтернет):**
+
+```bash
+python3 -m venv .venv-convert
+source .venv-convert/bin/activate
+pip install -r requirements-convert.txt
+
+python scripts/convert_model.py \
+  --model facebook/nllb-200-1.3B \
+  --output /opt/storage/ct2-nllb-1.3b-nondistilled-int8 \
+  --quantization int8
+```
+
+Після конвертації можна увімкнути офлайн-режим — у `.env`:
+```
+NLLB_TRANSFORMERS_OFFLINE=1
+```
+
+**4. Підняти сервіс:**
+
+```bash
+docker network create shared_net || true
+docker compose up -d --build
+```
+
+**5. Перевірити здоров'я:**
+
+```bash
+curl http://localhost:8000/health
+```
+
+---
+
+### Оновлення сервісу
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Docker Compose автоматично перезапустить контейнер з новим образом. Downtime — час білду + ініціалізації моделі (~30–60 с).
+
+Якщо потрібен zero-downtime — запустіть новий контейнер на іншому порту, переключіть проксі (nginx/traefik), потім зупиніть старий.
+
+---
+
+### Логи та моніторинг
+
+```bash
+# Потік логів у реальному часі
+docker compose logs -f nllb-service
+
+# Останні 100 рядків
+docker compose logs --tail=100 nllb-service
+
+# Статус контейнера
+docker compose ps
+```
+
+Сервіс автоматично перезапускається при падінні (`restart: unless-stopped`). При рестарті хоста Docker поверне контейнер, якщо демон налаштований на автозапуск:
+
+```bash
+sudo systemctl enable docker
+```
+
+---
+
 ![Скріншот](docs/translate-ui.png)
 ![translation with html tags](docs/translate-with-html-tags.png)
 
