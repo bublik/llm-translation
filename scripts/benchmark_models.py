@@ -22,10 +22,10 @@ from pathlib import Path
 # Підібрані під реальний виробничий домен (ru→uk + ar→uk/ru)
 TEST_CASES = [
     # ── Військові радіоперехоплення (основний домен) ──────────────────────────
-    ("51й Печора прием.", "rus_Cyrl", "ukr_Cyrl", "military/callsign-short"),
-    ("Снежок, Снежок Печора. Короче, крепимся, ждём команды.", "rus_Cyrl", "ukr_Cyrl", "military/order"),
+    ("51й Рэмбо прием.", "rus_Cyrl", "ukr_Cyrl", "military/callsign-short"),
+    ("Терминатор, Терминатор Рэмбо. Короче, крепимся, ждём команды.", "rus_Cyrl", "ukr_Cyrl", "military/order"),
     ("56-й, добро на форточку.", "rus_Cyrl", "ukr_Cyrl", "military/confirm"),
-    ("Убыток 484 для вас имею. 484 принял до обртаного. Спасибо.", "rus_Cyrl", "ukr_Cyrl", "military/report"),
+    ("Матрица 484 для вас имею. 484 принял до обртаного. Спасибо.", "rus_Cyrl", "ukr_Cyrl", "military/report"),
     ("Все так же крепимся, ждём команды. Конец связи.", "rus_Cyrl", "ukr_Cyrl", "military/status"),
     ("Движение наблюдается в квадрате восемь. Подтвердите получение.", "rus_Cyrl", "ukr_Cyrl", "military/intel"),
     ("Первый, первый, я второй. Как слышно? Приём.", "rus_Cyrl", "ukr_Cyrl", "military/radio-check"),
