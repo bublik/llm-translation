@@ -131,7 +131,7 @@ _language_detector = None
 from app.schemas import ErrorResponse, LanguagesResponse, TranslateRequest, TranslateResponse
 
 if TYPE_CHECKING:
-    from app.translator import NLLBTranslator
+    from app.translator import EuroLLMTranslator, NLLBTranslator
 
 app = FastAPI(
     title=API_TITLE,
@@ -152,9 +152,9 @@ def get_translator() -> Any:
     translator = getattr(app.state, "translator", None)
     if translator is None:
         try:
-            from app.translator import NLLBTranslator
+            from app.translator import create_translator
 
-            translator = NLLBTranslator()
+            translator = create_translator()
         except Exception as exc:  # pragma: no cover
             raise HTTPException(
                 status_code=HTTP_STATUS_MODEL_UNAVAILABLE,
@@ -324,12 +324,14 @@ def require_rate_limit(request: Request) -> None:
 
 
 def get_model_device(translator: Any) -> str:
-    """Повертає device CTranslate2-транслятора, якщо доступно."""
+    """Повертає device транслятора."""
     ct2 = getattr(translator, "_ct2", None)
     device = getattr(ct2, "device", None)
-    if device is None:
-        return "unknown"
-    return str(device)
+    if device is not None:
+        return str(device)
+    if hasattr(translator, "_llm"):
+        return "cpu"
+    return "unknown"
 
 
 # ── HTML-переклад ────────────────────────────────────────────────────────────

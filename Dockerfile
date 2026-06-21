@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
-RUN pip install -r requirements.txt && \
+RUN pip install \
+      --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
+      -r requirements.txt && \
     find /usr/local/lib -name "libctranslate2*.so*" \
       -exec patchelf --clear-execstack {} \;
 

@@ -269,7 +269,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="NLLB_", env_file=".env", extra="ignore")
 
-    model_name: str = "facebook/nllb-200-1.3B"
+    model_name: str = "facebook/nllb-200-3.3B"
     tgt_lang: str = "rus_Cyrl"
     default_target_language: str = "ru"
     api_key_enabled: bool = False
@@ -283,9 +283,13 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = False
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60
-    ct2_model_dir: str = "/app/storage/ct2-nllb-1.3b-nondistilled-int8"
+    ct2_model_dir: str = "/app/storage/ct2-nllb-3.3b-int8"
     ct2_device: str = "cpu"
     ct2_inter_threads: int = 1
+    translation_backend: str = "nllb"
+    eurollm_model_path: str = "/app/storage/eurollm-1.7b-instruct-gguf/EuroLLM-1.7B-Instruct.Q4_K_M.gguf"
+    eurollm_n_threads: int = 8
+    eurollm_n_ctx: int = 2048
 
     @field_validator("default_target_language")
     @classmethod
@@ -422,6 +426,14 @@ class Settings(BaseSettings):
         if value < 1:
             raise ValueError("NLLB_RATE_LIMIT_WINDOW_SECONDS must be greater than or equal to 1.")
         return value
+
+    @field_validator("translation_backend")
+    @classmethod
+    def validate_translation_backend(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"nllb", "eurollm"}:
+            raise ValueError("NLLB_TRANSLATION_BACKEND must be 'nllb' or 'eurollm'.")
+        return normalized
 
     @field_validator("ct2_device")
     @classmethod

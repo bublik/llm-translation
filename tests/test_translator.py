@@ -172,10 +172,10 @@ def test_translate_chunks_long_text(monkeypatch: MonkeyPatch) -> None:
     dummy_ct2 = DummyCT2Translator()
     translator_module, _ = _load_translator_module(monkeypatch, dummy_ct2)
 
-    # Токенайзер що повертає 101 токен — перевищує _MAX_SOURCE_TOKENS=100
+    # Токенайзер що повертає 257 токенів — перевищує _MAX_SOURCE_TOKENS=256
     class LongTokenizer(DummyTokenizer):
         def __call__(self, text: str) -> dict[str, list[int]]:
-            return {"input_ids": list(range(101))}
+            return {"input_ids": list(range(257))}
 
     import pathlib
     translator = translator_module.NLLBTranslator.__new__(translator_module.NLLBTranslator)
@@ -270,11 +270,41 @@ def test_settings_reject_invalid_ct2_inter_threads() -> None:
         Settings(ct2_inter_threads=0)
 
 
-def test_settings_model_name_default_is_1_3b() -> None:
-    """Code-default для model_name вказує на не-дистильовану модель 1.3B."""
+def test_settings_model_name_default_is_3_3b() -> None:
+    """Code-default для model_name вказує на не-дистильовану модель 3.3B."""
     default = Settings.model_fields["model_name"].default
-    assert "1.3B" in default
+    assert "3.3B" in default
     assert "distilled" not in default
+
+
+def test_settings_translation_backend_default_is_nllb() -> None:
+    """Code-default для translation_backend — nllb."""
+    default = Settings.model_fields["translation_backend"].default
+    assert default == "nllb"
+
+
+def test_settings_translation_backend_accepts_eurollm() -> None:
+    """translation_backend приймає значення eurollm."""
+    s = Settings(translation_backend="eurollm")
+    assert s.translation_backend == "eurollm"
+
+
+def test_settings_translation_backend_rejects_unknown() -> None:
+    """translation_backend відхиляє невідомі значення."""
+    with pytest.raises(ValueError, match="NLLB_TRANSLATION_BACKEND must be 'nllb' or 'eurollm'."):
+        Settings(translation_backend="openai")
+
+
+def test_create_translator_returns_nllb(monkeypatch: MonkeyPatch) -> None:
+    """create_translator повертає NLLBTranslator при backend=nllb."""
+    import pathlib
+    translator_module, _ = _load_translator_module(monkeypatch)
+    test_settings = Settings(translation_backend="nllb")
+    monkeypatch.setattr(translator_module, "settings", test_settings)
+    monkeypatch.setattr(pathlib.Path, "exists", lambda self: True)
+
+    translator = translator_module.create_translator()
+    assert isinstance(translator, translator_module.NLLBTranslator)
 
 
 # ── Тести: TranslateRequest / resolve_source_language ────────────────────────
