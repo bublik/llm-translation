@@ -280,7 +280,7 @@ class Settings(BaseSettings):
     transformers_offline: bool = False
     max_length: int = 1024
     request_text_max_length: int = 10_000
-    rate_limit_enabled: bool = False
+    rate_limit_enabled: bool = True
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60
     ct2_model_dir: str = "/app/storage/ct2-nllb-3.3b-int8"
@@ -290,7 +290,7 @@ class Settings(BaseSettings):
     eurollm_model_path: str = "/app/storage/eurollm-1.7b-instruct-gguf/EuroLLM-1.7B-Instruct.Q4_K_M.gguf"
     eurollm_n_threads: int = 8
     eurollm_n_ctx: int = 2048
-    eurollm_max_tokens: int = -1
+    eurollm_max_tokens: int = 1536
     eurollm_repeat_penalty: float = 1.18
 
     @field_validator("default_target_language")
