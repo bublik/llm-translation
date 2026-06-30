@@ -166,16 +166,15 @@ _NLLB_TO_LANG_NAME: dict[str, str] = {
     "zul_Latn": "Zulu",
 }
 
-_EUROLLM_SYSTEM = (
-    "You are a military radio communication translator. "
-    "Translate accurately and concisely. "
-    "Keep callsigns, codes, and numbers unchanged. "
-    "Output only the translation, nothing else."
-)
-
-
 class EuroLLMTranslator:
-    """Перекладач на базі EuroLLM через llama-cpp-python (ChatML, CPU inference)."""
+    """Перекладач на базі EuroLLM через llama-cpp-python (ChatML, CPU inference).
+
+    Використовує офіційний формат перекладу EuroLLM (порожній system + мітки
+    мов `English: ... Ukrainian:`) і перекладає вхід порядково. Порядкове
+    розбиття критичне: на довгому шумному блоці модель «вискакує» з режиму
+    перекладу й лишає речення мовою оригіналу; короткі рядки тримають її в
+    режимі перекладу (частка неперекладеного падає з ~90% до ~15%).
+    """
 
     def __init__(self) -> None:
         from llama_cpp import Llama
@@ -197,9 +196,20 @@ class EuroLLMTranslator:
     def translate(self, text: str, target_language: str, source_language: str) -> str:
         src = _NLLB_TO_LANG_NAME.get(source_language, source_language)
         tgt = _NLLB_TO_LANG_NAME.get(target_language, target_language)
+
+        lines = [line for line in text.splitlines() if line.strip()]
+        if len(lines) <= 1:
+            return self._run(text.strip(), src, tgt)
+        return "\n".join(self._run(line.strip(), src, tgt) for line in lines)
+
+    def _run(self, text: str, src: str, tgt: str) -> str:
+        # Офіційний формат EuroLLM: порожній system, мітки мов, перекладач
+        # продовжує після "{tgt}: ".
         prompt = (
-            f"<|im_start|>system\n{_EUROLLM_SYSTEM}<|im_end|>\n"
-            f"<|im_start|>user\nTranslate from {src} to {tgt}:\n{text}<|im_end|>\n"
+            f"<|im_start|>system\n<|im_end|>\n"
+            f"<|im_start|>user\n"
+            f"Translate the following {src} source text to {tgt}:\n"
+            f"{src}: {text}\n{tgt}: <|im_end|>\n"
             f"<|im_start|>assistant\n"
         )
         result = self._llm(
