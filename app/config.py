@@ -290,8 +290,8 @@ class Settings(BaseSettings):
     eurollm_model_path: str = "/app/storage/eurollm-1.7b-instruct-gguf/EuroLLM-1.7B-Instruct.Q4_K_M.gguf"
     eurollm_n_threads: int = 8
     eurollm_n_ctx: int = 2048
-    eurollm_max_tokens: int = 512
-    eurollm_repeat_penalty: float = 1.3
+    eurollm_max_tokens: int = -1
+    eurollm_repeat_penalty: float = 1.18
 
     @field_validator("default_target_language")
     @classmethod
@@ -440,9 +440,13 @@ class Settings(BaseSettings):
     @field_validator("eurollm_max_tokens")
     @classmethod
     def validate_eurollm_max_tokens(cls, value: int) -> int:
-        """Перевіряє ліміт згенерованих токенів для EuroLLM."""
-        if value < 1:
-            raise ValueError("NLLB_EUROLLM_MAX_TOKENS must be greater than or equal to 1.")
+        """Перевіряє ліміт згенерованих токенів для EuroLLM.
+
+        Значення <= 0 (типово -1) знімає штучну стелю: llama-cpp генеруватиме
+        до stop-токена в межах решти контексту (`n_ctx` мінус довжина промпту).
+        """
+        if value < -1:
+            raise ValueError("NLLB_EUROLLM_MAX_TOKENS must be -1 (unbounded) or a positive integer.")
         return value
 
     @field_validator("eurollm_repeat_penalty")
