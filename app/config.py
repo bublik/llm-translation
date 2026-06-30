@@ -280,7 +280,7 @@ class Settings(BaseSettings):
     transformers_offline: bool = False
     max_length: int = 1024
     request_text_max_length: int = 10_000
-    rate_limit_enabled: bool = True
+    rate_limit_enabled: bool = False
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60
     ct2_model_dir: str = "/app/storage/ct2-nllb-3.3b-int8"

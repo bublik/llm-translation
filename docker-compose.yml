@@ -21,8 +21,11 @@ services:
       NLLB_EUROLLM_N_CTX: ${NLLB_EUROLLM_N_CTX:-2048}
       NLLB_EUROLLM_MAX_TOKENS: ${NLLB_EUROLLM_MAX_TOKENS:-1536}
       NLLB_EUROLLM_REPEAT_PENALTY: ${NLLB_EUROLLM_REPEAT_PENALTY:-1.18}
-      NLLB_RATE_LIMIT_ENABLED: ${NLLB_RATE_LIMIT_ENABLED:-true}
-      NLLB_RATE_LIMIT_REQUESTS: ${NLLB_RATE_LIMIT_REQUESTS:-60}
+      # Rate-limit вимкнено: сервіс внутрішній (server-to-server за X-API-Key),
+      # а ключ ліміту — IP, тож усі переклади з одного бекенда ділили б спільний
+      # bucket. За потреби увімкнути з великим значенням (ENABLED=true + REQUESTS=...).
+      NLLB_RATE_LIMIT_ENABLED: ${NLLB_RATE_LIMIT_ENABLED:-false}
+      NLLB_RATE_LIMIT_REQUESTS: ${NLLB_RATE_LIMIT_REQUESTS:-600}
       NLLB_RATE_LIMIT_WINDOW_SECONDS: ${NLLB_RATE_LIMIT_WINDOW_SECONDS:-60}
     volumes:
       - ${STORAGE_PATH}:/app/storage
