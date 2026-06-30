@@ -204,8 +204,9 @@ class EuroLLMTranslator:
         )
         result = self._llm(
             prompt,
-            max_tokens=_DEFAULT_MAX_DECODING_LENGTH,
+            max_tokens=settings.eurollm_max_tokens,
             temperature=0.0,
+            repeat_penalty=settings.eurollm_repeat_penalty,
             stop=["<|im_end|>", "<|im_start|>"],
         )
         return result["choices"][0]["text"].strip()
