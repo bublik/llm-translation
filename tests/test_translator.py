@@ -208,6 +208,59 @@ def test_split_sentences() -> None:
     assert t_mod._split_sentences("Single sentence") == ["Single sentence"]
 
 
+# ── Тести: радіо-глосарій (EuroLLM) ──────────────────────────────────────────
+
+def test_radio_glossary_normalizes() -> None:
+    """Пошук у глосарії нечутливий до регістру й крайової пунктуації."""
+    import app.translator as t_mod
+
+    assert t_mod._radio_glossary_lookup("Over.", "Ukrainian") == "Прийом."
+    assert t_mod._radio_glossary_lookup("over", "Ukrainian") == "Прийом."
+    assert t_mod._radio_glossary_lookup("OVER!", "Ukrainian") == "Прийом."
+    assert t_mod._radio_glossary_lookup("  Roger that  ", "Ukrainian") == "Прийняв."
+    assert t_mod._radio_glossary_lookup("Out.", "Ukrainian") == "Кінець зв'язку."
+
+
+def test_radio_glossary_none_for_plain_text() -> None:
+    """Звичайний текст (не процедурне слово) не збігається з глосарієм."""
+    import app.translator as t_mod
+
+    assert t_mod._radio_glossary_lookup("Двигун 3, доповідь.", "Ukrainian") is None
+    assert t_mod._radio_glossary_lookup("Roger, рухаюсь на північ.", "Ukrainian") is None
+
+
+def test_radio_glossary_only_ukrainian_target() -> None:
+    """Глосарій активний лише для української цілі."""
+    import app.translator as t_mod
+
+    assert t_mod._radio_glossary_lookup("Over.", "Russian") is None
+    assert t_mod._radio_glossary_lookup("Over.", "Ukrainian") == "Прийом."
+
+
+def test_translate_line_shortcircuits_without_model(monkeypatch: MonkeyPatch) -> None:
+    """Процедурний рядок повертається з глосарію без виклику моделі; інший — через _run."""
+    import app.translator as t_mod
+
+    translator = t_mod.EuroLLMTranslator.__new__(t_mod.EuroLLMTranslator)
+
+    def boom(self, text: str, src: str, tgt: str) -> str:
+        raise AssertionError("_run не має викликатись для процедурного рядка")
+
+    monkeypatch.setattr(t_mod.EuroLLMTranslator, "_run", boom)
+    assert translator._translate_line("Over.", "Russian", "Ukrainian") == "Прийом."
+
+    # Звичайний рядок має піти в модель (_run).
+    calls: list[str] = []
+
+    def record(self, text: str, src: str, tgt: str) -> str:
+        calls.append(text)
+        return "переклад"
+
+    monkeypatch.setattr(t_mod.EuroLLMTranslator, "_run", record)
+    assert translator._translate_line("Двигун 3.", "Russian", "Ukrainian") == "переклад"
+    assert calls == ["Двигун 3."]
+
+
 # ── Тести: Settings ───────────────────────────────────────────────────────────
 
 def test_settings_accept_zero_max_length() -> None:

@@ -166,6 +166,42 @@ _NLLB_TO_LANG_NAME: dict[str, str] = {
     "zul_Latn": "Zulu",
 }
 
+# Радіо-процедурні (brevity) коди → фіксований український переклад.
+# Ключ — нормалізований (lower, без пунктуації) варіант англійського терміна.
+# Спрацьовує лише коли цілий рядок = процедурне слово (short-circuit до моделі).
+_RADIO_GLOSSARY_UK: dict[str, str] = {
+    "over": "Прийом.",
+    "out": "Кінець зв'язку.",
+    "over and out": "Кінець зв'язку.",
+    "roger": "Прийняв.",
+    "roger that": "Прийняв.",
+    "copy": "Прийняв.",
+    "copy that": "Прийняв.",
+    "wilco": "Виконую.",
+    "say again": "Повторіть.",
+    "affirmative": "Так.",
+    "negative": "Ні.",
+    "standby": "Чекайте.",
+    "stand by": "Чекайте.",
+    "go ahead": "Говоріть.",
+}
+
+# Обрізання пунктуації/пробілів з країв рядка перед пошуком у глосарії.
+_RADIO_STRIP = re.compile(r"^[\s.!?,;:\-]+|[\s.!?,;:\-]+$")
+
+
+def _radio_glossary_lookup(line: str, target_name: str) -> str | None:
+    """Повертає фіксований переклад, якщо цілий рядок = процедурне слово.
+
+    Активний лише для української цілі; інакше None (рядок іде в модель).
+    """
+    if target_name != "Ukrainian":
+        return None
+    key = _RADIO_STRIP.sub("", line).lower()
+    key = re.sub(r"\s+", " ", key)
+    return _RADIO_GLOSSARY_UK.get(key)
+
+
 class EuroLLMTranslator:
     """Перекладач на базі EuroLLM через llama-cpp-python (ChatML, CPU inference).
 
@@ -199,8 +235,15 @@ class EuroLLMTranslator:
 
         lines = [line for line in text.splitlines() if line.strip()]
         if len(lines) <= 1:
-            return self._run(text.strip(), src, tgt)
-        return "\n".join(self._run(line.strip(), src, tgt) for line in lines)
+            return self._translate_line(text.strip(), src, tgt)
+        return "\n".join(self._translate_line(line.strip(), src, tgt) for line in lines)
+
+    def _translate_line(self, text: str, src: str, tgt: str) -> str:
+        # Радіо-процедурні слова цілим рядком віддаємо з глосарію, не турбуючи модель.
+        hit = _radio_glossary_lookup(text, tgt)
+        if hit is not None:
+            return hit
+        return self._run(text, src, tgt)
 
     def _run(self, text: str, src: str, tgt: str) -> str:
         # Офіційний формат EuroLLM: порожній system, мітки мов, перекладач
