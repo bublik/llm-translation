@@ -292,6 +292,7 @@ class Settings(BaseSettings):
     eurollm_n_ctx: int = 2048
     eurollm_max_tokens: int = 1536
     eurollm_repeat_penalty: float = 1.18
+    log_level: str = "INFO"
 
     @field_validator("default_target_language")
     @classmethod
@@ -456,6 +457,16 @@ class Settings(BaseSettings):
         if value < 1.0:
             raise ValueError("NLLB_EUROLLM_REPEAT_PENALTY must be greater than or equal to 1.0.")
         return value
+
+    @field_validator("log_level")
+    @classmethod
+    def validate_log_level(cls, value: str) -> str:
+        """Перевіряє рівень логування (стандартні рівні `logging`)."""
+        normalized = value.strip().upper()
+        allowed = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
+        if normalized not in allowed:
+            raise ValueError(f"NLLB_LOG_LEVEL must be one of {sorted(allowed)}.")
+        return normalized
 
     @field_validator("ct2_device")
     @classmethod

@@ -305,6 +305,22 @@ def test_settings_reject_invalid_rate_limit_window_seconds() -> None:
         Settings(rate_limit_window_seconds=0)
 
 
+def test_settings_default_log_level_is_info() -> None:
+    """Дефолтний рівень логування — INFO (щоб latency_ms виводився)."""
+    assert Settings().log_level == "INFO"
+
+
+def test_settings_log_level_normalizes_case() -> None:
+    """NLLB_LOG_LEVEL нечутливий до регістру."""
+    assert Settings(log_level="debug").log_level == "DEBUG"
+
+
+def test_settings_reject_invalid_log_level() -> None:
+    """Невалідний NLLB_LOG_LEVEL відхиляється."""
+    with pytest.raises(ValueError, match="NLLB_LOG_LEVEL must be one of"):
+        Settings(log_level="verbose")
+
+
 def test_settings_default_ct2_device_is_cpu() -> None:
     """CT2 device за замовчуванням — cpu."""
     s = Settings()

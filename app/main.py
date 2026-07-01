@@ -140,7 +140,15 @@ app = FastAPI(
     contact={"name": API_CONTACT_NAME},
     openapi_tags=list(API_TAGS),
 )
+# Без явної конфігурації логер `app.main` пропагує до root (за замовчуванням
+# WARNING, без хендлера), тож INFO-логи (зокрема latency_ms кожного запиту) не
+# виводяться — видно лише access-логи uvicorn. Налаштовуємо root-хендлер тут.
+logging.basicConfig(
+    level=getattr(logging, settings.log_level, logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 logger = logging.getLogger("app.main")
+logger.setLevel(getattr(logging, settings.log_level, logging.INFO))
 api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
 bearer_scheme = HTTPBearer(auto_error=False)
 rate_limit_lock = threading.Lock()
