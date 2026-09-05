@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### Added
+- Короткий alias `tr` -> `tur_Latn` у `SUPPORTED_SOURCE_LANGUAGES`: `POST /translate`
+  з `source_language=tr` більше не віддає `422`, `GET /languages` містить `tr`.
+  Потрібно для турецьких пристроїв Speech Flow, які надсилають короткий код мови.
+
 ### Changed (`aab4ab6`)
 - Перехід з `facebook/nllb-200-distilled-1.3B` на **`facebook/nllb-200-1.3B`** (не-дистильована модель):
   - Краща обробка multi-sentence текстів — менше обрізань другого/третього речення

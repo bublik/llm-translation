@@ -129,3 +129,21 @@ def test_rate_limit_exceeded(monkeypatch) -> None:
         assert False, "Очікувався HTTPException(429), але помилка не виникла."
     except HTTPException as exc:
         assert exc.status_code == 429
+
+
+def test_languages_includes_turkish_alias() -> None:
+    """Перевіряє, що `/languages` віддає короткий alias `tr` для турецької."""
+    payload = languages()
+    assert payload.source_languages["tr"] == "tur_Latn"
+
+
+def test_translate_resolves_turkish_source_alias() -> None:
+    """Перевіряє резолв короткого alias `tr` у NLLB-код `tur_Latn`."""
+    translator = DummyTranslator()
+    payload = TranslateRequest(text="Merhaba, nasılsın?", source_language="tr", target_language="uk")
+
+    response = translate(request=_build_request(), payload=payload, _=None, __=None, translator=translator)
+
+    assert response.source_language == "tur_Latn"
+    assert response.target_language == "ukr_Cyrl"
+    assert translator.last_source_language == "tur_Latn"

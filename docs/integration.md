@@ -90,6 +90,7 @@ Request body:
   - `md` -> `ron_Latn` (Молдова)
   - `be` -> `bel_Cyrl` (Білорусь)
   - `ru` -> `rus_Cyrl` (Росія)
+  - `tr` -> `tur_Latn` (Туреччина)
 - Цільові: `ru` -> `rus_Cyrl`, `uk` -> `ukr_Cyrl`
 
 Якщо `target_language` не передано, використовується `NLLB_DEFAULT_TARGET_LANGUAGE`.

@@ -225,6 +225,7 @@ curl -X POST http://localhost:8000/translate \
 - `md` -> `ron_Latn` (Молдова)
 - `be` -> `bel_Cyrl` (Білорусь)
 - `ru` -> `rus_Cyrl` (Росія)
+- `tr` -> `tur_Latn` (Туреччина)
 
 Цільові мови:
 - `ru` -> `rus_Cyrl`

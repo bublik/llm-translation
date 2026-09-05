@@ -407,6 +407,13 @@ def test_resolve_source_language_alias() -> None:
     assert resolve_source_language("ar") == "arb_Arab"
 
 
+def test_resolve_source_language_turkish_alias() -> None:
+    """Короткий alias `tr` мапиться на `tur_Latn` (пристрої Speech Flow шлють саме `tr`)."""
+    assert "tr" in SUPPORTED_SOURCE_LANGUAGES
+    assert resolve_source_language("tr") == "tur_Latn"
+    assert resolve_source_language("TR") == "tur_Latn"
+
+
 def test_resolve_source_language_nllb_code_case_sensitive() -> None:
     """NLLB-коди зберігають регістр (ukr_Cyrl не перетворюється на ukr_cyrl)."""
     assert resolve_source_language("ukr_Cyrl") == "ukr_Cyrl"
@@ -418,3 +425,19 @@ def test_resolve_source_language_uppercase_alias() -> None:
     """Короткі alias-и нечутливі до регістру (AR == ar)."""
     assert resolve_source_language("AR") == "arb_Arab"
     assert resolve_source_language("EN") == "eng_Latn"
+
+
+def test_eurollm_prompt_names_turkish_source(monkeypatch: MonkeyPatch) -> None:
+    """EuroLLM-промпт для `tur_Latn` називає мову джерела «Turkish», а не NLLB-кодом."""
+    import app.translator as t_mod
+
+    translator = t_mod.EuroLLMTranslator.__new__(t_mod.EuroLLMTranslator)
+    seen: list[tuple[str, str]] = []
+
+    def record(self, text: str, src: str, tgt: str) -> str:
+        seen.append((src, tgt))
+        return "переклад"
+
+    monkeypatch.setattr(t_mod.EuroLLMTranslator, "_run", record)
+    assert translator.translate("Merhaba", "ukr_Cyrl", "tur_Latn") == "переклад"
+    assert seen == [("Turkish", "Ukrainian")]

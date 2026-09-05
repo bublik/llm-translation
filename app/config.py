@@ -58,6 +58,7 @@ SUPPORTED_SOURCE_LANGUAGES: dict[str, str] = {
     "md": "ron_Latn",  # Moldova (Romanian)
     "be": "bel_Cyrl",
     "ru": "rus_Cyrl",
+    "tr": "tur_Latn",
     # Усі 200 мов NLLB-200 (alias = NLLB-код)
     "ace_Arab": "ace_Arab",  # Acehnese (Arabic script)
     "ace_Latn": "ace_Latn",  # Acehnese (Latin script)
